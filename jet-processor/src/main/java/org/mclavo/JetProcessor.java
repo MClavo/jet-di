@@ -29,9 +29,6 @@ import javax.tools.StandardLocation;
 
 import org.mclavo.annotation.Fuel;
 import org.mclavo.annotation.Jet;
-import org.mclavo.generator.DefinitionSourceRenderer;
-import org.mclavo.generator.DefinitionSpec;
-import org.mclavo.generator.DefinitionSpecFactory;
 
 @SupportedAnnotationTypes({ 
     "org.mclavo.annotation.Jet",

@@ -1,4 +1,4 @@
-package org.mclavo.generator;
+package org.mclavo;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -13,7 +13,7 @@ import org.mclavo.annotation.Intake;
 
 public final class DefinitionSpecFactory {
 
-    private static String importPackage = "org.mclavo";
+    private static String importPackage = "org.mclavo.context";
     private static List<String> dependencyImports = List.of(
         "BeanDefinition",
         "BeanProvider",

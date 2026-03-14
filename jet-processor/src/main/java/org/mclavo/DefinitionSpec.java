@@ -1,4 +1,4 @@
-package org.mclavo.generator;
+package org.mclavo;
 
 import java.util.List;
 

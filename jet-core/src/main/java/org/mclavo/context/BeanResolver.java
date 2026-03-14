@@ -1,4 +1,4 @@
-package org.mclavo;
+package org.mclavo.context;
 
 public interface BeanResolver {
     <T> T get(Class<T> key);

@@ -1,4 +1,4 @@
-package org.mclavo;
+package org.mclavo.context;
 
 public interface BeanProvider {
     <T> T provide(Class<T> beanType);

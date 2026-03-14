@@ -1,4 +1,4 @@
-package org.mclavo;
+package org.mclavo.context;
 
 public interface BeanDefinition<T> {
     BeanKey key();
