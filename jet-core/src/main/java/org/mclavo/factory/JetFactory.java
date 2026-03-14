@@ -10,21 +10,24 @@ import java.util.concurrent.ConcurrentMap;
 import org.mclavo.annotation.Intake;
 import org.mclavo.annotation.Jet;
 
-public enum JetFactory {
-    INSTANCE;
+public final class JetFactory {
 
-    private final ConcurrentMap<Class<?>, Object> registry = new ConcurrentHashMap<>();
+    private final JetRegistry registry;
+
+    public JetFactory(JetRegistry registry) {
+        this.registry = registry;
+    }
 
     public <T> T getInstanceOf(Class<T> beanClass, Object... arguments) {
         try {
             if (beanClass.isAnnotationPresent(Jet.class)) {
 
-                if (registry.containsKey(beanClass)) {
+                if (registry.contains(beanClass)) {
                     return beanClass.cast(registry.get(beanClass));
                 }
                 
                 T bean = instantiateBeanClass(beanClass, arguments);
-                registry.putIfAbsent(beanClass, bean);
+                registry.register(beanClass, bean);
                 
                 /*
                  * Note that the call to ConcurrentMap.putIfAbsent() is an atomic call
@@ -81,7 +84,7 @@ public enum JetFactory {
             // and creating an instance of this class
             // using BeanFactory
             Class<?> fieldClass = f.getType();
-            Object fieldValue = JetFactory.INSTANCE.getInstanceOf(fieldClass);
+            Object fieldValue = getInstanceOf(fieldClass);
 
             // Injecting
             f.setAccessible(true);
