@@ -11,6 +11,8 @@ public class App {
     public static void main(String[] args) {
         JetContext context = ControlTower.run(App.class);
         MyApplication app = context.provide(MyApplication.class);
+        EmptyBean emptyBeanInstance = context.provide(EmptyBean.class);
+        SimplePart part = context.provide(SimplePart.class);
 /*         Service s1 = jetFactory.getInstanceOf(Service.class, "Hello Jet!");
         s1.send();
         
@@ -19,5 +21,7 @@ public class App {
         
         MyApplication app = jetFactory.getInstanceOf(MyApplication.class); */
         System.out.println("MyApplication has been created with a Service: " + app.isServiceSet());
+        System.out.println("EmptyBean has been created: " + emptyBeanInstance.getMessage());
+        System.out.println("SimplePart has been created: " + part.getMessage());
     }
 }

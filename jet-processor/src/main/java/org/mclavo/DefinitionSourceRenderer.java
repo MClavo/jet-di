@@ -6,7 +6,7 @@ public final class DefinitionSourceRenderer {
 
     private static String DefinitionTemplate = 
     """
-    package %s.generated;
+    package %s;
 
     %s
 

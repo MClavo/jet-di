@@ -6,9 +6,12 @@ import java.util.stream.Collectors;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.util.Elements;
 
+import org.mclavo.annotation.Fuel;
 import org.mclavo.annotation.Intake;
 
 public final class DefinitionSpecFactory {
@@ -23,29 +26,29 @@ public final class DefinitionSpecFactory {
     );
 
     // TODO: ADD qualifier
-    private static String providerTemplate = "beanProvider.provide(%s.class)";
+    private static String classCreationTemplate = "beanProvider.provide(%s.class)";
+    private static String methodCreationTemplate = "beanProvider.provide(%s.class).%s";
 
-    public static DefinitionSpec from(Element element) {
+    public static DefinitionSpec from(Element element, Elements elements) {
 
         return new DefinitionSpec(
-            getPackageName(element),
+            getPackageName(element, elements),
             getClassName(element),
             getBeanType(element),
             getQualifier(element),
-            getCreationExpression(element),
+            getCreationExpression(element, elements),
             getImports()
         );
     }
 
-    private static String getPackageName(Element element) {
-        int nameLength = element.getSimpleName().length();
+    private static String getPackageName(Element element, Elements elements) {
+        PackageElement packageElement = elements.getPackageOf(element);
 
-        // com.demo.service
-        // com.demo / . / simpleName -> service
-        // remove simpleName and also the point, therefore also - 1
-        int packageLength = element.toString().length() - nameLength - 1;
+        if (packageElement.isUnnamed()) {
+            return "generated";
+        }
 
-        return element.toString().substring(0, packageLength);
+        return packageElement.getQualifiedName() + ".generated";
     }
 
     private static List<String> getImports() {
@@ -56,11 +59,50 @@ public final class DefinitionSpecFactory {
     }
 
     private static String getClassName(Element element) {
-        return element.getSimpleName().toString()+"Definition";
+        // @Jet on class
+        if (element instanceof TypeElement typeElement) {
+            return typeElement.getSimpleName() + "Definition";
+        }
+
+        // @Part on method
+        if (element instanceof ExecutableElement methodElement) {
+            String enclosingName = methodElement.getEnclosingElement().getSimpleName().toString();
+            String methodName = methodElement.getSimpleName().toString();
+            String qualifierSuffix = resolveQualifierSuffix(element);
+
+            return enclosingName + "_" + methodName + "_" + qualifierSuffix + "Definition";
+        }
+
+        throw new IllegalStateException("Element type not supported: " + element.getKind());
+    }
+
+    private static String resolveQualifierSuffix(Element element) {
+        Fuel fuel = element.getAnnotation(Fuel.class);
+
+        if (fuel == null || fuel.value().isBlank()) {
+            return "none";
+        }
+
+        return sanitizeName(fuel.value());
+    }
+    private static String sanitizeName(String value) {
+        return value.replaceAll("[^a-zA-Z0-9_]", "_");
     }
 
     private static String getBeanType(Element element) {
-        return element.asType().toString();
+        // delete all "(" and ")", because for @Part methods, 
+        // the type will be rendered as "()com.demo.MyType", and we only want "com.demo.MyType"
+        
+        if(element instanceof TypeElement typeElement) {
+            return typeElement.getQualifiedName().toString();//.replaceAll("[()]", "");
+        }
+
+        if (element instanceof ExecutableElement methodElement) {
+            return methodElement.getReturnType().toString();
+        }
+
+        return "";
+
     }
 
     // TODO: Implement qualifier logic in @part methods in @Hangar class
@@ -68,14 +110,35 @@ public final class DefinitionSpecFactory {
         return "Qualifier.none()";   
     }
 
-    private static String getCreationExpression(Element element) {
+    private static String getCreationExpression(Element element, Elements elements) {
 
         if(element instanceof TypeElement typeElement) {
             return renderConstructorCall(typeElement);
         }
 
-        // TODO: add factory
+        if(element instanceof ExecutableElement methodElement) {
+            String packageName = elements.getPackageOf(element).toString();
+            String className = methodElement.getEnclosingElement().getSimpleName().toString();
+            String methodCall = createMethodCall(methodElement);
+
+            
+
+            String qualifierSuffix = resolveQualifierSuffix(element);
+
+            return methodCreationTemplate.formatted(packageName + "." + className, methodCall);
+        }
+        
         return "";
+    }
+
+    private static String createMethodCall(ExecutableElement methodElement) {
+        String methodCallTemplate = methodElement.getSimpleName() + "(%s)";
+
+        String arguments = methodElement.getParameters().stream()
+            .map(DefinitionSpecFactory::renderProvideCall)
+            .collect(Collectors.joining(", "));
+
+        return methodCallTemplate.formatted(arguments);
     }
 
     private static String renderConstructorCall(TypeElement typeElement) {
@@ -131,7 +194,7 @@ public final class DefinitionSpecFactory {
     private static String renderProvideCall(VariableElement element) {
         // TODO: get qualifier
         //element.getAnnotation(null);
-        return providerTemplate.formatted(element.asType());
+        return classCreationTemplate.formatted(element.asType());
     }
 
 }

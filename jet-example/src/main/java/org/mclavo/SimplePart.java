@@ -1,13 +1,13 @@
 package org.mclavo;
 
 public class SimplePart {
-    private final String message;
+    private final EmptyBean bean;
 
-    public SimplePart(String message) {
-        this.message = message;
+    public SimplePart(EmptyBean emptyBean) {
+        this.bean = emptyBean;
     }
 
     public String getMessage() {
-        return message;
+        return bean.getMessage();
     }
 }
