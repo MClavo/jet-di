@@ -2,8 +2,8 @@ package org.mclavo.context;
 
 import java.util.Objects;
 
-public record BeanKey (
-    Class<?> type,
+public record BeanKey<T> (
+    Class<T> type,
     Qualifier qualifier
 ){
     public BeanKey {
@@ -11,16 +11,16 @@ public record BeanKey (
         Objects.requireNonNull(qualifier, "Qualifier cannot be null");
     }
 
-    public static BeanKey of(Class<?> type) {
-        return new BeanKey(type, Qualifier.none());
+    public static <T> BeanKey<T> of(Class<T> type) {
+        return new BeanKey<>(type, Qualifier.none());
     }
 
-    public static BeanKey of(Class<?> type, Qualifier qualifier) {
-        return new BeanKey(type, qualifier);
+    public static <T> BeanKey<T> of(Class<T> type, Qualifier qualifier) {
+        return new BeanKey<>(type, qualifier);
     }
 
     @Override
     public String toString() {
-        return "BeanKey [type=" + type.getName() + ", qualifier=" + qualifier + "]";
+        return "BeanKey[type=" + type.getName() + ", qualifier=" + qualifier + "]";
     }
 }

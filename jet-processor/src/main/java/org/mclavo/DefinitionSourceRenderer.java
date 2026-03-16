@@ -16,12 +16,12 @@ public final class DefinitionSourceRenderer {
             ScopeProvider.singletonScope(beanProvider -> %s);
 
         @Override
-        public %s create(BeanProvider beanProvider) {
+        public %s apply(BeanProvider beanProvider) {
             return provider.apply(beanProvider);
         }
 
         @Override
-        public BeanKey key() {
+        public BeanKey<%s> key() {
             return BeanKey.of(%s.class, %s);
         }
     }
@@ -42,6 +42,7 @@ public final class DefinitionSourceRenderer {
             spec.beanType(),
             spec.beanType(),
             spec.creationExpression(),
+            spec.beanType(),
             spec.beanType(),
             spec.beanType(),
             spec.qualifierExpression()

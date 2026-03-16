@@ -4,22 +4,29 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.mclavo.annotation.Intake;
 import org.mclavo.annotation.Jet;
+import org.mclavo.context.BeanProvider;
 
 public final class JetFactory {
 
     private final JetRegistry registry;
+    private final BeanProvider beanProvider;
 
-    public JetFactory(JetRegistry registry) {
+    public JetFactory(JetRegistry registry, BeanProvider beanProvider) {
         this.registry = registry;
+        this.beanProvider = beanProvider;
     }
 
     public <T> T getInstanceOf(Class<T> beanClass, Object... arguments) {
         try {
+            T beanFromDefinition = registry.getOrCreateFromDefinition(beanClass, beanProvider);
+
+            if (beanFromDefinition != null) {
+                return beanFromDefinition;
+            }
+
             if (beanClass.isAnnotationPresent(Jet.class)) {
 
                 if (registry.contains(beanClass)) {

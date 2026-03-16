@@ -3,17 +3,14 @@
  */
 package org.mclavo;
 
-import org.mclavo.annotation.Intake;
 import org.mclavo.context.ControlTower;
 import org.mclavo.context.JetContext;
 
 public class App {
-    @Intake
-    private static MyApplication app;
-
+    
     public static void main(String[] args) {
         JetContext context = ControlTower.run(App.class);
-        context.get(App.class);
+        MyApplication app = context.provide(MyApplication.class);
 /*         Service s1 = jetFactory.getInstanceOf(Service.class, "Hello Jet!");
         s1.send();
         

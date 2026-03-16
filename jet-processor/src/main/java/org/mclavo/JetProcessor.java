@@ -2,6 +2,7 @@ package org.mclavo;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,7 +29,9 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
 import org.mclavo.annotation.Fuel;
+import org.mclavo.annotation.Hangar;
 import org.mclavo.annotation.Jet;
+import org.mclavo.annotation.Part;
 
 @SupportedAnnotationTypes({ 
     "org.mclavo.annotation.Jet",
@@ -38,13 +41,20 @@ import org.mclavo.annotation.Jet;
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
 public class JetProcessor extends AbstractProcessor {
+    private final Set<String> processedBeanDefinitions = new LinkedHashSet<>();
+
     private boolean visibleWritten = false;
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         try {
             processJet(roundEnv.getElementsAnnotatedWith(Jet.class));
+            //processHangar(roundEnv.getElementsAnnotatedWith(Hangar.class));
+            //generateProvider();
+            generateMetadata();
 
+            /* if(roundEnv.processingOver()) {
+            } */
 
            /*  processIntake(roundEnv.getElementsAnnotatedWith(Intake.class));
             processHangar(roundEnv.getElementsAnnotatedWith(Hangar.class));
@@ -80,6 +90,7 @@ public class JetProcessor extends AbstractProcessor {
 
                 try (Writer writer = sourceFile.openWriter()) {
                     writer.write(source);
+                    processedBeanDefinitions.add(generatedFqcn);
                 }
 
             } catch (FilerException e) {
@@ -102,6 +113,81 @@ public class JetProcessor extends AbstractProcessor {
                     element
                 );
             }
+        }
+    }
+
+    private void processHangar(Set<? extends Element> annotatedElements) {
+        for(Element hangarElement : annotatedElements) {
+            List<? extends Element> partBeans = hangarElement.getEnclosedElements().stream()
+                .filter(e -> e.getAnnotation(Part.class) != null)
+                .toList();
+
+            Filer filer = processingEnv.getFiler();
+            Elements elements = processingEnv.getElementUtils();
+            
+            for(Element element : partBeans) {
+                try {
+                //String source = renderDefinitionSource(element, elements);
+                
+                DefinitionSpec spec = DefinitionSpecFactory.from(element);
+                String source = DefinitionSourceRenderer.render(spec);
+
+                String generatedPackage = resolveGeneratedPackage(element, elements);
+                String generatedSimpleName = resolveGeneratedSimpleName(element);
+                String generatedFqcn = generatedPackage + "." + generatedSimpleName;
+
+                JavaFileObject sourceFile = filer.createSourceFile(generatedFqcn, element);
+
+                try (Writer writer = sourceFile.openWriter()) {
+                    writer.write(source);
+                    processedBeanDefinitions.add(generatedFqcn);
+                }
+
+            } catch (FilerException e) {
+                // Suele pasar en rondas incrementales o si intentas generar dos veces el mismo archivo
+                processingEnv.getMessager().printMessage(
+                    Diagnostic.Kind.WARNING,
+                    "No se pudo regenerar " + element + ": " + e.getMessage(),
+                    element
+                );
+            } catch (IOException e) {
+                processingEnv.getMessager().printMessage(
+                    Diagnostic.Kind.ERROR,
+                    "Error generando definición para " + element + ": " + e.getMessage(),
+                    element
+                );
+            } catch (IllegalStateException e) {
+                processingEnv.getMessager().printMessage(
+                    Diagnostic.Kind.ERROR,
+                    e.getMessage(),
+                    element
+                );
+            }
+            }
+        
+        }
+
+    }
+
+
+    private void generateMetadata() {
+        try {
+            FileObject resource = processingEnv.getFiler().createResource(
+                StandardLocation.CLASS_OUTPUT,
+                "",
+                "META-INF/services/org.mclavo.context.BeanDefinition"
+
+            );
+            
+            try (Writer writer = resource.openWriter()) {
+                for(String definition : processedBeanDefinitions) {
+                    writer.write(definition);
+                    writer.write("\n");
+                }
+            }
+
+        } catch (Exception e) {
+            // TODO: handle exception
         }
     }
 
@@ -294,7 +380,7 @@ public class JetProcessor extends AbstractProcessor {
         }
     }
 
-    private void processHangar(Set<? extends Element> annotatedElements) {
+    /* private void processHangar(Set<? extends Element> annotatedElements) {
         try {
             FileObject fo = processingEnv.getFiler()
                 .createResource(StandardLocation.CLASS_OUTPUT, "", "hangar-processor.txt");
@@ -310,7 +396,7 @@ public class JetProcessor extends AbstractProcessor {
         } catch (Exception e) {
             processingEnv.getMessager().printMessage(Kind.ERROR, "Failed to write visible file: " + e);
         }
-    }
+    } */
 
     private void processPart(Set<? extends Element> annotatedElements) {
         try {
