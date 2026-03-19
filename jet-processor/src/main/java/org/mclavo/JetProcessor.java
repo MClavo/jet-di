@@ -14,8 +14,6 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
@@ -24,7 +22,6 @@ import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
-import org.mclavo.annotation.Fuel;
 import org.mclavo.annotation.Hangar;
 import org.mclavo.annotation.Jet;
 import org.mclavo.annotation.Part;
@@ -38,6 +35,8 @@ import org.mclavo.annotation.Part;
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
 public class JetProcessor extends AbstractProcessor {
     private final Set<String> processedBeanDefinitions = new LinkedHashSet<>();
+    private final SpecDefinitionFactory jetDefinitionFactory = new JetDefinitionFactory();
+    private final SpecDefinitionFactory partDefinitionFactory = new PartDefinitionFactory();
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
@@ -58,7 +57,7 @@ public class JetProcessor extends AbstractProcessor {
 
     private void processJet(Set<? extends Element> annotatedElements) {
         for (Element element : annotatedElements) {
-            createDefinitionFile(element);
+            createDefinitionFile(element, jetDefinitionFactory);
         }
     }
 
@@ -81,22 +80,22 @@ public class JetProcessor extends AbstractProcessor {
             
             // First create the definition for the Hangar itself,
             // so it can be used as a dependency for its parts.
-            createDefinitionFile(hangarElement);
+            createDefinitionFile(hangarElement, jetDefinitionFactory);
 
             for(Element element : partBeans) {
-                createDefinitionFile(element);
+                createDefinitionFile(element, partDefinitionFactory);
             }
         
         }
 
     }
 
-    private void createDefinitionFile(Element element) {
+    private void createDefinitionFile(Element element, SpecDefinitionFactory definitionFactory) {
         Filer filer = processingEnv.getFiler();
         Elements elements = processingEnv.getElementUtils();
         try {
 
-            DefinitionSpec spec = DefinitionSpecFactory.from(element, elements);
+            DefinitionSpec spec = definitionFactory.from(element, elements);
             String source = DefinitionSourceRenderer.render(spec);
 
 
