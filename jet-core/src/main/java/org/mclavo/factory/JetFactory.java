@@ -10,6 +10,9 @@ import org.mclavo.annotation.Jet;
 import org.mclavo.context.BeanProvider;
 import org.mclavo.exception.BeanInstantiationException;
 
+/**
+ * Reflective factory that creates beans and performs field injection for {@code @Intake} members.
+ */
 public final class JetFactory {
 
     private final JetRegistry registry;
@@ -20,6 +23,15 @@ public final class JetFactory {
         this.beanProvider = beanProvider;
     }
 
+    /**
+     * Resolves an instance of the requested type, using registry/definitions first and
+     * reflection fallback otherwise.
+     *
+     * @param beanClass requested bean class
+     * @param arguments constructor arguments used for reflective instantiation
+     * @param <T> bean type
+     * @return resolved bean instance
+     */
     public <T> T getInstanceOf(Class<T> beanClass, Object... arguments) {
         try {
             T beanFromDefinition = registry.getOrCreateFromDefinition(beanClass, beanProvider);
@@ -37,21 +49,7 @@ public final class JetFactory {
                 T bean = instantiateBeanClass(beanClass, arguments);
                 registry.register(beanClass, bean);
                 
-                /*
-                 * Note that the call to ConcurrentMap.putIfAbsent() is an atomic call
-                 * in the case of ConcurrentMap, so you do not need to synchronize this
-                 * part.
-                 * 
-                 * There is one caveat though: the value you passed to the
-                 * ConcurrentMap.putIfAbsent() may not be the one that, in the end,
-                 * was put in the map. That could be the case if several threads called
-                 * this ConcurrentMap.putIfAbsent() concurrently, with different instances.
-                 * In the end, there is a winner, and it could be another thread than yours.
-                 * So to overcome this, you need to call ConcurrentMap.get(), to return the
-                 * singleton.
-                 * 
-                 * REF: (https://dev.java/learn/reflection/dependency-injection/)
-                 */
+                // Return the registry value to honor putIfAbsent semantics under concurrent creation.
                 return beanClass.cast(registry.get(beanClass));
 
             } else {
@@ -69,6 +67,14 @@ public final class JetFactory {
 
     }
 
+    /**
+     * Instantiates a bean and injects fields marked with {@code @Intake}.
+     *
+     * @param beanClass bean class to instantiate
+     * @param arguments constructor arguments
+     * @param <T> bean type
+     * @return initialized bean instance
+     */
     private <T> T instantiateBeanClass(Class<T> beanClass, Object[] arguments)
             throws NoSuchMethodException, InstantiationException,
             IllegalAccessException, InvocationTargetException {
@@ -83,20 +89,16 @@ public final class JetFactory {
 
         Field[] fields = beanClass.getDeclaredFields();
         
-        // Search for methods with Intake annotation that need to be injected
+        // Only fields marked for injection are resolved through the container.
         Field[] injectableFields = Arrays.stream(fields)
                 .filter(f -> f.isAnnotationPresent(Intake.class))
                 .toArray(Field[]::new);
         
 
-        for(Field f : injectableFields) {
-            // Getting the class of this field, 
-            // and creating an instance of this class
-            // using BeanFactory
+        for (Field f : injectableFields) {
             Class<?> fieldClass = f.getType();
             Object fieldValue = getInstanceOf(fieldClass);
 
-            // Injecting
             f.setAccessible(true);
             f.set(bean, fieldValue);
         }
