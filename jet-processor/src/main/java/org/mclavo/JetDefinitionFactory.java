@@ -10,13 +10,14 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 
 import org.mclavo.annotation.Intake;
+import org.mclavo.exception.DefinitionFactoryException;
 
 public final class JetDefinitionFactory implements SpecDefinitionFactory {
 
     @Override
     public DefinitionSpec from(Element element, Elements elements) {
         if (!(element instanceof TypeElement typeElement)) {
-            throw new IllegalStateException("JetDefinitionFactory only supports classes: " + element.getKind());
+            throw new DefinitionFactoryException("JetDefinitionFactory only supports classes: " + element.getKind());
         }
 
         return new DefinitionSpec(
@@ -74,14 +75,14 @@ public final class JetDefinitionFactory implements SpecDefinitionFactory {
             .toList();
 
         if (injectConstructors.size() > 1) {
-            throw new IllegalStateException(
+            throw new DefinitionFactoryException(
                 beanType + " class has more than one constructor annotated with @Intake : "
                     + injectConstructors
             );
         }
 
         if (injectConstructors.isEmpty()) {
-            throw new IllegalStateException(
+            throw new DefinitionFactoryException(
                 beanType + " class has more than one constructor, annotate one with @Intake to inject dependencies"
             );
         }

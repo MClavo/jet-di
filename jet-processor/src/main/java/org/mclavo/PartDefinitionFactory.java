@@ -7,6 +7,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.util.Elements;
 
 import org.mclavo.annotation.Fuel;
+import org.mclavo.exception.DefinitionFactoryException;
 
 public final class PartDefinitionFactory implements SpecDefinitionFactory {
 
@@ -16,7 +17,7 @@ public final class PartDefinitionFactory implements SpecDefinitionFactory {
     @Override
     public DefinitionSpec from(Element element, Elements elements) {
         if (!(element instanceof ExecutableElement methodElement)) {
-            throw new IllegalStateException("PartDefinitionFactory only supports methods: " + element.getKind());
+            throw new DefinitionFactoryException("PartDefinitionFactory only supports methods: " + element.getKind());
         }
 
         return new DefinitionSpec(

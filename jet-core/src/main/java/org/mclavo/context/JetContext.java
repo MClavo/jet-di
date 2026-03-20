@@ -2,6 +2,8 @@ package org.mclavo.context;
 
 import java.util.ServiceLoader;
 
+import org.mclavo.exception.BeanDefinitionLoadingException;
+import org.mclavo.exception.BeanProvisionException;
 import org.mclavo.factory.JetRegistry;
 
 public class JetContext implements BeanProvider {
@@ -23,9 +25,10 @@ public class JetContext implements BeanProvider {
                 System.out.println("Loaded BeanDefinition: " + definition.getClass().getName());
                 registry.register(definition);
             }
-        } catch (Throwable e) {
-            e.printStackTrace();
-            throw e;
+        } catch (Exception e) {
+            throw new BeanDefinitionLoadingException(
+                    "Failed to load BeanDefinitions from ServiceLoader",
+                    e);
         }
     }
 
@@ -37,7 +40,7 @@ public class JetContext implements BeanProvider {
             return beanFromDefinition;
         }
 
-        throw new IllegalStateException(
+        throw new BeanProvisionException(
                 "No BeanDefinition found for " + clazz.getName()
                         + ". Make sure it is generated and published through ServiceLoader.");
     }

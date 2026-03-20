@@ -25,6 +25,7 @@ import javax.tools.StandardLocation;
 import org.mclavo.annotation.Hangar;
 import org.mclavo.annotation.Jet;
 import org.mclavo.annotation.Part;
+import org.mclavo.exception.DefinitionFactoryException;
 
 @SupportedAnnotationTypes({ 
     "org.mclavo.annotation.Jet",
@@ -122,7 +123,7 @@ public class JetProcessor extends AbstractProcessor {
                 element
             );
 
-        } catch (IllegalStateException e) {
+        } catch (DefinitionFactoryException e) {
             processingEnv.getMessager().printMessage(
                 Diagnostic.Kind.ERROR,
                 e.getMessage(),

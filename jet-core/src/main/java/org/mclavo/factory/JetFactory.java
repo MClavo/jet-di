@@ -8,6 +8,7 @@ import java.util.Arrays;
 import org.mclavo.annotation.Intake;
 import org.mclavo.annotation.Jet;
 import org.mclavo.context.BeanProvider;
+import org.mclavo.exception.BeanInstantiationException;
 
 public final class JetFactory {
 
@@ -61,7 +62,9 @@ public final class JetFactory {
 
         } catch (NoSuchMethodException | InvocationTargetException | InstantiationException
                 | IllegalAccessException e) {
-            throw new RuntimeException(e);
+            throw new BeanInstantiationException(
+                    "Failed to instantiate bean of type " + beanClass.getName(),
+                    e);
         }
 
     }
