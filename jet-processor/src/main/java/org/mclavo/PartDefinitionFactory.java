@@ -9,11 +9,21 @@ import javax.lang.model.util.Elements;
 import org.mclavo.annotation.Fuel;
 import org.mclavo.exception.DefinitionFactoryException;
 
+/**
+ * Builds {@link DefinitionSpec}s for {@code @Part} factory methods found in {@code @Hangar} classes.
+ */
 public final class PartDefinitionFactory implements SpecDefinitionFactory {
 
     private static final String METHOD_CREATION_TEMPLATE = "beanProvider.provide(%s.class).%s";
     
-    
+    /**
+     * Creates a definition specification from a factory method element.
+     *
+        * @param element annotated element expected to be a method
+        * @param elements annotation processing utility facade
+        * @return generation spec describing the part definition source
+     * @throws DefinitionFactoryException when the input element is not a method
+     */
     @Override
     public DefinitionSpec from(Element element, Elements elements) {
         if (!(element instanceof ExecutableElement methodElement)) {
@@ -56,8 +66,11 @@ public final class PartDefinitionFactory implements SpecDefinitionFactory {
     }
 
     /**
-     * Generates the creation expression for the bean by creating a method call to
-     * the provided method, and generating provide calls for each of its parameters.
+     * Builds the source expression that invokes the factory method on its enclosing hangar bean.
+     *
+     * @param methodElement factory method metadata
+     * @param elements annotation processing utility facade
+     * @return source expression that creates the part bean
      */
     private String getCreationExpression(ExecutableElement methodElement, Elements elements) {
         String packageName = elements.getPackageOf(methodElement).toString();
@@ -70,8 +83,7 @@ public final class PartDefinitionFactory implements SpecDefinitionFactory {
     private String createMethodCall(ExecutableElement methodElement) {
         String methodCallTemplate = methodElement.getSimpleName() + "(%s)";
 
-        // Render the arguments for the method call by creating provide calls for each
-        // parameter
+        // Each method parameter is resolved from BeanProvider at runtime.
         String arguments = methodElement.getParameters().stream()
                 .map(DefinitionUtils::provideCall)
                 .collect(Collectors.joining(", "));

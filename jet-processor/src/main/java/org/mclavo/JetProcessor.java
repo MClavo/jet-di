@@ -27,6 +27,14 @@ import org.mclavo.annotation.Jet;
 import org.mclavo.annotation.Part;
 import org.mclavo.exception.DefinitionFactoryException;
 
+/**
+ * Annotation processor that generates {@code BeanDefinition} classes for:
+ * <ul>
+ *   <li>{@code @Jet} classes</li>
+ *   <li>{@code @Part} methods declared inside {@code @Hangar} classes</li>
+ * </ul>
+ * It also generates the ServiceLoader file under {@code META-INF/services}.
+ */
 @SupportedAnnotationTypes({ 
     "org.mclavo.annotation.Jet",
     "org.mclavo.annotation.Intake",
@@ -39,6 +47,13 @@ public class JetProcessor extends AbstractProcessor {
     private final SpecDefinitionFactory jetDefinitionFactory = new JetDefinitionFactory();
     private final SpecDefinitionFactory partDefinitionFactory = new PartDefinitionFactory();
 
+    /**
+     * Main annotation-processing round entrypoint.
+        *
+        * @param annotations annotation types requested in this round
+        * @param roundEnv round environment with annotated elements
+        * @return {@code true} to claim supported annotations
+     */
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         try {
@@ -56,41 +71,48 @@ public class JetProcessor extends AbstractProcessor {
     }
 
 
+    /**
+     * Generates definitions for all classes annotated with {@code @Jet}.
+        *
+        * @param annotatedElements elements annotated with {@code @Jet}
+     */
     private void processJet(Set<? extends Element> annotatedElements) {
         for (Element element : annotatedElements) {
             createDefinitionFile(element, jetDefinitionFactory);
         }
     }
 
+    /**
+     * Generates definitions for {@code @Hangar} classes and their {@code @Part} methods.
+     *
+     * @param annotatedElements elements annotated with {@code @Hangar}
+     */
     private void processHangar(Set<? extends Element> annotatedElements) {
-        // @Hangar is only supported on classes for now,
-        //  but we need to look for @Part methods inside them.
-        for(Element hangarElement : annotatedElements) {
-
-
-            // Now look for @Part methods inside the Hangar and create definitions for them.
+        for (Element hangarElement : annotatedElements) {
+            // @Part methods are discovered from members of each @Hangar class.
             List<? extends Element> partBeans = hangarElement.getEnclosedElements().stream()
                 .filter(e -> e.getAnnotation(Part.class) != null)
                 .toList();
 
-            // If there are no @Part methods, 
-            // skip generating a definition for the Hangar.
-            if(partBeans.isEmpty()) {
+            if (partBeans.isEmpty()) {
                 return;
             }
             
-            // First create the definition for the Hangar itself,
-            // so it can be used as a dependency for its parts.
+            // The hangar definition must exist so part definitions can request it via BeanProvider.
             createDefinitionFile(hangarElement, jetDefinitionFactory);
 
-            for(Element element : partBeans) {
+            for (Element element : partBeans) {
                 createDefinitionFile(element, partDefinitionFactory);
             }
-        
         }
-
     }
 
+    /**
+     * Creates and writes a generated definition source file for a single element.
+     *
+     * @param element source element that originated the definition
+     * @param definitionFactory factory used to map the element into a generation spec
+     */
     private void createDefinitionFile(Element element, SpecDefinitionFactory definitionFactory) {
         Filer filer = processingEnv.getFiler();
         Elements elements = processingEnv.getElementUtils();
@@ -133,6 +155,9 @@ public class JetProcessor extends AbstractProcessor {
     }
 
 
+    /**
+     * Writes the ServiceLoader metadata listing generated definition classes.
+     */
     private void generateMetadata() {
         try {
             FileObject resource = processingEnv.getFiler().createResource(

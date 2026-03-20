@@ -2,9 +2,12 @@ package org.mclavo;
 
 import java.util.stream.Collectors;
 
+/**
+ * Renders Java source code for generated {@code BeanDefinition} implementations.
+ */
 public final class DefinitionSourceRenderer {
 
-    private static String DefinitionTemplate = 
+    private static final String DEFINITION_TEMPLATE =
     """
     package %s;
 
@@ -28,14 +31,19 @@ public final class DefinitionSourceRenderer {
         
     """;
     
-
+    /**
+     * Builds the full source code for a generated definition class.
+     *
+     * @param spec metadata used to render package, imports, class name and creation logic
+     * @return Java source code for the generated definition class
+     */
     public static String render(DefinitionSpec spec) {
         String importsBlock = spec.imports().stream()
             .sorted()
             .map(importName -> "import " + importName + ";")
             .collect(Collectors.joining("\n"));
         
-        return DefinitionTemplate.formatted(
+        return DEFINITION_TEMPLATE.formatted(
             spec.packageName(),
             importsBlock,
             spec.simpleClassName(),
@@ -47,8 +55,5 @@ public final class DefinitionSourceRenderer {
             spec.beanType(),
             spec.qualifierExpression()
         );
-
     }
-
-
 }
