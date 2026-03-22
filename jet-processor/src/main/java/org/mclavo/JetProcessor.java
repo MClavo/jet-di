@@ -39,7 +39,8 @@ import org.mclavo.exception.DefinitionFactoryException;
     "org.mclavo.annotation.Jet",
     "org.mclavo.annotation.Intake",
     "org.mclavo.annotation.Hangar",
-    "org.mclavo.annotation.Part"
+    "org.mclavo.annotation.Part",
+    "org.mclavo.annotation.Fuel"
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
 public class JetProcessor extends AbstractProcessor {
@@ -49,10 +50,10 @@ public class JetProcessor extends AbstractProcessor {
 
     /**
      * Main annotation-processing round entrypoint.
-        *
-        * @param annotations annotation types requested in this round
-        * @param roundEnv round environment with annotated elements
-        * @return {@code true} to claim supported annotations
+     *
+     * @param annotations annotation types requested in this round
+     * @param roundEnv round environment with annotated elements
+     * @return {@code true} to claim supported annotations
      */
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
@@ -73,12 +74,12 @@ public class JetProcessor extends AbstractProcessor {
 
     /**
      * Generates definitions for all classes annotated with {@code @Jet}.
-        *
-        * @param annotatedElements elements annotated with {@code @Jet}
+     *
+     * @param annotatedElements elements annotated with {@code @Jet}
      */
     private void processJet(Set<? extends Element> annotatedElements) {
         for (Element element : annotatedElements) {
-            createDefinitionFile(element, jetDefinitionFactory);
+            generateJetDefinition(element);
         }
     }
 
@@ -95,35 +96,75 @@ public class JetProcessor extends AbstractProcessor {
                 .toList();
 
             if (partBeans.isEmpty()) {
-                return;
+                continue; // No @Part methods, skip hangar definition generation.
             }
             
             // The hangar definition must exist so part definitions can request it via BeanProvider.
-            createDefinitionFile(hangarElement, jetDefinitionFactory);
+            generateJetDefinition(hangarElement);
 
+            // Each @Part method is processed into a separate definition file.
             for (Element element : partBeans) {
-                createDefinitionFile(element, partDefinitionFactory);
+                generatePartDefinition(element);
             }
         }
     }
 
+
     /**
-     * Creates and writes a generated definition source file for a single element.
+     * Creates a class definition file for the given element.
      *
-     * @param element source element that originated the definition
-     * @param definitionFactory factory used to map the element into a generation spec
+     * @param element the element for which to create a definition file
      */
-    private void createDefinitionFile(Element element, SpecDefinitionFactory definitionFactory) {
-        Filer filer = processingEnv.getFiler();
+    private void generateJetDefinition(Element element) {
         Elements elements = processingEnv.getElementUtils();
         try {
+            DefinitionSpec spec = jetDefinitionFactory.from(element, elements);
+            writeDefinitionFile(element, spec);
 
-            DefinitionSpec spec = definitionFactory.from(element, elements);
-            String source = DefinitionSourceRenderer.render(spec);
+        } catch (DefinitionFactoryException e) {
+            processingEnv.getMessager().printMessage(
+                Diagnostic.Kind.ERROR,
+                e.getMessage(),
+                element
+            );
+        }
+
+    }
+
+    /**
+     * Creates a part definition file for the given element.
+     *
+     * @param element the element for which to create a definition file
+     */
+    private void generatePartDefinition(Element element) {
+        Elements elements = processingEnv.getElementUtils();
+        try {
+            DefinitionSpec spec = partDefinitionFactory.from(element, elements);
+            writeDefinitionFile(element, spec);
+
+        } catch (DefinitionFactoryException e) {
+            processingEnv.getMessager().printMessage(
+                Diagnostic.Kind.ERROR,
+                e.getMessage(),
+                element
+            );
+        }
+    }
 
 
-            String generatedFqcn = spec.packageName() + "." + spec.simpleClassName();
+    /**
+     * Writes a source file for the given definition spec, originating from the provided element.
+     *
+     * @param element source element that originated the definition
+     * @param spec definition metadata to render into a source file
+     */
+    private void writeDefinitionFile(Element element, DefinitionSpec spec){
+        Filer filer = processingEnv.getFiler();
+        String source = DefinitionSourceRenderer.render(spec);
+        String generatedFqcn = spec.packageName() + "." + spec.simpleClassName();
 
+
+        try {
             JavaFileObject sourceFile = filer.createSourceFile(generatedFqcn, element);
 
             try (Writer writer = sourceFile.openWriter()) {
@@ -134,23 +175,17 @@ public class JetProcessor extends AbstractProcessor {
         } catch (FilerException e) {
             processingEnv.getMessager().printMessage(
                 Diagnostic.Kind.WARNING,
-                "No se pudo regenerar " + element + ": " + e.getMessage(),
+                "Could not regenerate " + element + ": " + e.getMessage(),
                 element
             );
 
         } catch (IOException e) {
             processingEnv.getMessager().printMessage(
                 Diagnostic.Kind.ERROR,
-                "Error generando definición para " + element + ": " + e.getMessage(),
+                "Error generating definition for " + element + ": " + e.getMessage(),
                 element
             );
 
-        } catch (DefinitionFactoryException e) {
-            processingEnv.getMessager().printMessage(
-                Diagnostic.Kind.ERROR,
-                e.getMessage(),
-                element
-            );
         }
     }
 
@@ -174,8 +209,17 @@ public class JetProcessor extends AbstractProcessor {
                 }
             }
 
-        } catch (Exception e) {
-            // TODO: handle exception
+        } catch (FilerException e) {
+            processingEnv.getMessager().printMessage(
+                Diagnostic.Kind.WARNING,
+                "Could not regenerate ServiceLoader metadata: " + e.getMessage()
+            );
+
+        } catch (IOException e) {
+            processingEnv.getMessager().printMessage(
+                Diagnostic.Kind.ERROR,
+                "Error generating ServiceLoader metadata: " + e.getMessage()
+            );
         }
     }
 }
