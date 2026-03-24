@@ -7,8 +7,8 @@ import org.mclavo.annotation.Part;
 public class MyHangar {
     
     @Part
-    public SimplePart PartMessage(EmptyBean emptyBean) {
-        return new SimplePart(emptyBean);
+    public BeanWrapper PartMessage(EmptyBean emptyBean) {
+        return new BeanWrapper(emptyBean);
     }
 
 

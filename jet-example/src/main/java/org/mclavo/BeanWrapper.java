@@ -1,9 +1,9 @@
 package org.mclavo;
 
-public class SimplePart {
+public class BeanWrapper {
     private final EmptyBean bean;
 
-    public SimplePart(EmptyBean emptyBean) {
+    public BeanWrapper(EmptyBean emptyBean) {
         this.bean = emptyBean;
     }
 
