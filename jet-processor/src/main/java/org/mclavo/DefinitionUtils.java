@@ -1,11 +1,15 @@
 package org.mclavo;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.util.Elements;
+
+import org.mclavo.annotation.Fuel;
 
 /**
  * Provides helper methods shared by definition factories during code generation.
@@ -20,7 +24,7 @@ public final class DefinitionUtils {
         "ScopeProvider",
         "Qualifier"
     );
-    private static final String CLASS_CREATION_TEMPLATE = "beanProvider.provide(%s.class)";
+    private static final String CLASS_CREATION_TEMPLATE = "beanProvider.provide(%s.class, %s)";
 
     private DefinitionUtils() {
     }
@@ -63,6 +67,25 @@ public final class DefinitionUtils {
         return "Qualifier.none()";
     }
 
+    public static String qualifierOfExpression(String qualifier) {
+        return "Qualifier.of(%s)".formatted(javaStringLiteral(qualifier));
+    }
+
+    private static String javaStringLiteral(String value) {
+        return '"' + value
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            + '"';
+    }
+
+    private static String qualifierExpression(Fuel fuel) {
+        if (fuel == null || fuel.value().isBlank()) {
+            return qualifierNoneExpression();
+        }
+
+        return qualifierOfExpression(fuel.value());
+    }
+
     /**
      * Creates a bean provider call for a method/constructor parameter type.
      *
@@ -70,6 +93,19 @@ public final class DefinitionUtils {
      * @return source expression that resolves the parameter from {@code BeanProvider}
      */
     public static String provideCall(VariableElement element) {
-        return CLASS_CREATION_TEMPLATE.formatted(element.asType());
+        Fuel fuel = element.getAnnotation(Fuel.class);
+        return CLASS_CREATION_TEMPLATE.formatted(element.asType(), qualifierExpression(fuel));
+    }
+
+    /**
+     * Creates comma-separated bean provider calls for all executable parameters.
+     *
+     * @param executable constructor or method whose parameters are resolved from {@code BeanProvider}
+     * @return comma-separated source expressions for executable arguments
+     */
+    public static String provideArguments(ExecutableElement executable) {
+        return executable.getParameters().stream()
+            .map(DefinitionUtils::provideCall)
+            .collect(Collectors.joining(", "));
     }
 }

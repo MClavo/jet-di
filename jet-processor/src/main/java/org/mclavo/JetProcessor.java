@@ -61,7 +61,9 @@ public class JetProcessor extends AbstractProcessor {
             processJet(roundEnv.getElementsAnnotatedWith(Jet.class));
             processHangar(roundEnv.getElementsAnnotatedWith(Hangar.class));
 
-            generateMetadata();
+            if (roundEnv.processingOver() && !processedBeanDefinitions.isEmpty()) {
+                generateMetadata();
+            }
 
         } catch (Exception e) {
             processingEnv.getMessager()

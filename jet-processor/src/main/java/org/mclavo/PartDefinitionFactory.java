@@ -1,7 +1,5 @@
 package org.mclavo;
 
-import java.util.stream.Collectors;
-
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.util.Elements;
@@ -15,6 +13,7 @@ import org.mclavo.exception.DefinitionFactoryException;
 public final class PartDefinitionFactory implements SpecDefinitionFactory {
 
     private static final String METHOD_CREATION_TEMPLATE = "beanProvider.provide(%s.class).%s";
+
     
     /**
      * Creates a definition specification from a factory method element.
@@ -34,7 +33,7 @@ public final class PartDefinitionFactory implements SpecDefinitionFactory {
                 DefinitionUtils.generatedPackageName(element, elements),
                 getClassName(methodElement),
                 getBeanType(methodElement),
-                DefinitionUtils.qualifierNoneExpression(),
+                getQualifierExpression(methodElement),
                 getCreationExpression(methodElement, elements),
                 DefinitionUtils.dependencyImports());
     }
@@ -61,8 +60,21 @@ public final class PartDefinitionFactory implements SpecDefinitionFactory {
         return value.replaceAll("[^a-zA-Z0-9_]", "_");
     }
 
+    
     private String getBeanType(ExecutableElement methodElement) {
         return methodElement.getReturnType().toString();
+    }
+
+
+    private String getQualifierExpression(ExecutableElement methodElement) {
+        Fuel fuel = methodElement.getAnnotation(Fuel.class);
+        
+        if (fuel == null || fuel.value().isBlank()) {
+            return DefinitionUtils.qualifierNoneExpression();
+        }
+
+        return DefinitionUtils.qualifierOfExpression(fuel.value());
+
     }
 
     /**
@@ -84,9 +96,7 @@ public final class PartDefinitionFactory implements SpecDefinitionFactory {
         String methodCallTemplate = methodElement.getSimpleName() + "(%s)";
 
         // Each method parameter is resolved from BeanProvider at runtime.
-        String arguments = methodElement.getParameters().stream()
-                .map(DefinitionUtils::provideCall)
-                .collect(Collectors.joining(", "));
+        String arguments = DefinitionUtils.provideArguments(methodElement);
 
         return methodCallTemplate.formatted(arguments);
     }
