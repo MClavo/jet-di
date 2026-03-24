@@ -7,6 +7,7 @@ import java.util.Arrays;
 
 import org.mclavo.annotation.Intake;
 import org.mclavo.annotation.Jet;
+import org.mclavo.context.BeanDefinition;
 import org.mclavo.context.BeanProvider;
 import org.mclavo.exception.BeanInstantiationException;
 
@@ -34,10 +35,17 @@ public final class JetFactory {
      */
     public <T> T getInstanceOf(Class<T> beanClass, Object... arguments) {
         try {
-            T beanFromDefinition = registry.getOrCreateFromDefinition(beanClass, beanProvider);
+            T existing = registry.get(beanClass);
+            if (existing != null) {
+                return existing;
+            }
 
-            if (beanFromDefinition != null) {
-                return beanFromDefinition;
+            BeanDefinition<T> definition = registry.getDefinition(beanClass);
+            if (definition != null) {
+                T created = definition.apply(beanProvider);
+                registry.register(beanClass, created);
+                // Return the registry value to honor putIfAbsent semantics under concurrent creation.
+                return beanClass.cast(registry.get(beanClass));
             }
 
             if (beanClass.isAnnotationPresent(Jet.class)) {

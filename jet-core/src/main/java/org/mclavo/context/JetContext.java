@@ -1,9 +1,16 @@
 package org.mclavo.context;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.List;
 import java.util.ServiceLoader;
+import java.util.stream.Collectors;
 
 import org.mclavo.exception.BeanDefinitionLoadingException;
 import org.mclavo.exception.BeanProvisionException;
+import org.mclavo.exception.CircularDependencyException;
 import org.mclavo.factory.JetRegistry;
 
 /**
@@ -11,6 +18,7 @@ import org.mclavo.factory.JetRegistry;
  */
 public class JetContext implements BeanProvider {
     private final JetRegistry registry;
+    private final ThreadLocal<Deque<BeanKey<?>>> resolutionStack = ThreadLocal.withInitial(ArrayDeque::new);
 
     /**
      * Creates a context and eagerly loads {@code BeanDefinition} services.
@@ -36,45 +44,77 @@ public class JetContext implements BeanProvider {
                 System.out.println("Loaded BeanDefinition: " + definition.getClass().getName());
                 registry.register(definition);
             }
+
         } catch (Exception e) {
             throw new BeanDefinitionLoadingException(
-                    "Failed to load BeanDefinitions from ServiceLoader",
-                    e);
+                "Failed to load BeanDefinitions from ServiceLoader",
+                e);
         }
     }
 
     /**
-     * @param clazz bean class
+     * @param beanClass bean class
      * @param <T> bean type
      * @return resolved bean instance
      */
     @Override
-    public <T> T provide(Class<T> clazz) {
-        T beanFromDefinition = registry.getOrCreateFromDefinition(clazz, this);
+    public <T> T provide(Class<T> beanClass) {
+        return resolve(BeanKey.of(beanClass));
+    }
 
-        if (beanFromDefinition != null) {
-            return beanFromDefinition;
+    /**
+     * Resolves a bean using the complete key (type + qualifier).
+     */
+    private <T> T resolve(BeanKey<T> key) {
+        T existing = registry.get(key);
+        if (existing != null) {
+            return existing;
         }
 
-        throw new BeanProvisionException(
-                "No BeanDefinition found for " + clazz.getName()
-                        + ". Make sure it is generated and published through ServiceLoader.");
+        Deque<BeanKey<?>> stack = resolutionStack.get();
+        if (stack.contains(key)) {
+            throw new CircularDependencyException(buildCircularDependencyMessage(stack, key));
+        }
+
+        stack.push(key);
+        try {
+            BeanDefinition<T> definition = registry.getDefinition(key);
+            if (definition != null) {
+                T created = definition.apply(this);
+                registry.register(key, created);
+                // Return the canonical singleton instance when concurrent creation races happen.
+                return registry.get(key);
+            }
+
+            throw new BeanProvisionException(
+                "No BeanDefinition found for " + key
+                + ". Make sure it is generated and published through ServiceLoader.");
+
+        } finally {
+            stack.pop();
+            if (stack.isEmpty()) {
+                resolutionStack.remove();
+            }
+        }
     }
 
-    /**
-     * Qualifier-aware lookup is currently not implemented in registry resolution.
-     */
+    private String buildCircularDependencyMessage(Deque<BeanKey<?>> stack, BeanKey<?> repeatedKey) {
+        List<BeanKey<?>> path = new ArrayList<>(stack);
+        Collections.reverse(path);
+        path.add(repeatedKey);
+
+        return "Circular dependency detected: "
+            + path.stream().map(BeanKey::toString).collect(Collectors.joining(" -> "));
+    }
+
+    
     @Override
     public <T> T provide(Class<T> key, String qualifier) {
-        return provide(key);
+        return provide(key, Qualifier.of(qualifier));
     }
 
-
-    /**
-     * Qualifier-aware lookup is currently not implemented in registry resolution.
-     */
     @Override
     public <T> T provide(Class<T> beanType, Qualifier qualifier) {
-        return provide(beanType);
+        return resolve(BeanKey.of(beanType, qualifier));
     }
 }
