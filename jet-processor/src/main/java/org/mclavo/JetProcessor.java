@@ -61,6 +61,9 @@ public class JetProcessor extends AbstractProcessor {
             processJet(roundEnv.getElementsAnnotatedWith(Jet.class));
             processHangar(roundEnv.getElementsAnnotatedWith(Hangar.class));
 
+            // Processors can run in multiple rounds, 
+            // but the ServiceLoader metadata should only be 
+            // generated once after all definitions are processed
             if (roundEnv.processingOver() && !processedBeanDefinitions.isEmpty()) {
                 generateMetadata();
             }
