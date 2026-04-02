@@ -29,13 +29,16 @@ public final class PartDefinitionFactory implements SpecDefinitionFactory {
             throw new DefinitionFactoryException("PartDefinitionFactory only supports methods: " + element.getKind());
         }
 
-        return new DefinitionSpec(
-                DefinitionUtils.generatedPackageName(element, elements),
-                getClassName(methodElement),
-                getBeanType(methodElement),
-                getQualifierExpression(methodElement),
-                getCreationExpression(methodElement, elements),
-                DefinitionUtils.dependencyImports());
+        return new DefinitionSpec.Builder()
+            .packageName(DefinitionUtils.generatedPackageName(element, elements))
+            .imports(DefinitionUtils.dependencyImports())
+            .simpleClassName(getClassName(methodElement))
+            .beanType(getBeanType(methodElement))
+            .qualifierExpression(getQualifierExpression(methodElement))
+            // TODO: implement support for "@Primary" annotation
+            .primary(false)
+            .creationExpression(getCreationExpression(methodElement, elements))
+            .build();
     }
 
     private String getClassName(ExecutableElement methodElement) {

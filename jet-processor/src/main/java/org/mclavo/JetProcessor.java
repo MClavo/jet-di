@@ -166,7 +166,7 @@ public class JetProcessor extends AbstractProcessor {
     private void writeDefinitionFile(Element element, DefinitionSpec spec){
         Filer filer = processingEnv.getFiler();
         String source = DefinitionSourceRenderer.render(spec);
-        String generatedFqcn = spec.packageName() + "." + spec.simpleClassName();
+        String generatedFqcn = spec.getPackageName() + "." + spec.getSimpleClassName();
 
 
         try {

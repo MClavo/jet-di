@@ -17,8 +17,8 @@ class JetContextTest {
         // given
         JetContext context = new JetContext();
         JetRegistry registry = extractRegistry(context);
-        registry.register(new TestDefinition<>(BeanKey.of(String.class, Qualifier.of("en")), "hello"));
-        registry.register(new TestDefinition<>(BeanKey.of(String.class, Qualifier.of("es")), "hola"));
+        registry.register(new TestDefinition<>("hello", String.class, Qualifier.of("en"), false));
+        registry.register(new TestDefinition<>("hola", String.class, Qualifier.of("es"), false));
 
         // when
         String english = context.provide(String.class, Qualifier.of("en"));
@@ -53,7 +53,7 @@ class JetContextTest {
         // given
         JetContext context = new JetContext();
         JetRegistry registry = extractRegistry(context);
-        registry.register(new TestDefinition<>(BeanKey.of(SingletonBean.class), new SingletonBean()));
+        registry.register(new TestDefinition<>(new SingletonBean(), SingletonBean.class, null, true));
 
         // when
         SingletonBean first = context.provide(SingletonBean.class);
@@ -80,8 +80,18 @@ class JetContextTest {
 
     private static final class AlphaDefinition implements BeanDefinition<Alpha> {
         @Override
-        public BeanKey<Alpha> key() {
-            return BeanKey.of(Alpha.class);
+        public Class<Alpha> type() {
+            return Alpha.class;
+        }
+
+        @Override
+        public Qualifier qualifier() {
+            return Qualifier.none();
+        }
+
+        @Override
+        public boolean primary() {
+            return false;
         }
 
         @Override
@@ -92,8 +102,18 @@ class JetContextTest {
 
     private static final class BetaDefinition implements BeanDefinition<Beta> {
         @Override
-        public BeanKey<Beta> key() {
-            return BeanKey.of(Beta.class);
+        public Class<Beta> type() {
+            return Beta.class;
+        }
+
+        @Override
+        public Qualifier qualifier() {
+            return Qualifier.none();
+        }
+
+        @Override
+        public boolean primary() {
+            return false;
         }
 
         @Override
@@ -102,23 +122,38 @@ class JetContextTest {
         }
     }
 
-    private static final class TestDefinition<T> implements BeanDefinition<T> {
-        private final BeanKey<T> key;
+     private static final class TestDefinition<T> implements BeanDefinition<T> {
         private final T value;
+        private final Class<T> type;
+        private final Qualifier qualifier;
+        private final boolean primary;
 
-        private TestDefinition(BeanKey<T> key, T value) {
-            this.key = key;
+
+        private TestDefinition(T value, Class<T> type, Qualifier qualifier, boolean isPrimary) {
             this.value = value;
-        }
-
-        @Override
-        public BeanKey<T> key() {
-            return key;
+            this.type = type;
+            this.qualifier = qualifier;
+            this.primary = isPrimary;
         }
 
         @Override
         public T apply(BeanProvider beanProvider) {
             return value;
+        }
+
+        @Override
+        public boolean primary() {
+            return primary;
+        }
+
+        @Override
+        public Qualifier qualifier() {
+            return qualifier;
+        }
+
+        @Override
+        public Class<T> type() {
+            return type;
         }
     }
 }

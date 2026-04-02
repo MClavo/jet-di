@@ -32,14 +32,16 @@ public final class JetDefinitionFactory implements SpecDefinitionFactory {
             throw new DefinitionFactoryException("JetDefinitionFactory only supports classes: " + element.getKind());
         }
 
-        return new DefinitionSpec(
-            DefinitionUtils.generatedPackageName(element, elements),
-            getClassName(typeElement),
-            getBeanType(typeElement),
-            DefinitionUtils.qualifierNoneExpression(),
-            getCreationExpression(typeElement),
-            DefinitionUtils.dependencyImports()
-        );
+        return new DefinitionSpec.Builder()
+            .packageName(DefinitionUtils.generatedPackageName(element, elements))
+            .imports(DefinitionUtils.dependencyImports())
+            .simpleClassName(getClassName(typeElement))
+            .beanType(getBeanType(typeElement))
+            .qualifierExpression(DefinitionUtils.qualifierNoneExpression())
+            // TODO: implement support for "@Primary" annotation
+            .primary(false)
+            .creationExpression(getCreationExpression(typeElement))
+            .build();
     }
 
     /**

@@ -6,10 +6,21 @@ package org.mclavo.context;
  * @param <T> bean type handled by this definition
  */
 public interface BeanDefinition<T> {
+
     /**
-     * @return key that uniquely identifies the bean type and qualifier
+     * @return the type of the bean handled by this definition
      */
-    BeanKey<T> key();
+    Class<T> type();
+
+    /**
+     * @return the qualifier of the bean handled by this definition
+     */
+    Qualifier qualifier();
+
+    /**
+     * @return whether this bean is primary or not
+     */
+    boolean primary();
 
     /**
      * Builds or resolves the bean instance.
@@ -18,19 +29,4 @@ public interface BeanDefinition<T> {
      * @return resolved bean instance
      */
     T apply(BeanProvider beanProvider);
-
-    /**
-     * @return bean type declared by this definition key
-     */
-    default Class<T> type() {
-        Class<T> type = (Class<T>) key().type();
-        return type;
-    }
-
-    /**
-     * @return bean qualifier declared by this definition key
-     */
-    default Qualifier qualifier() {
-        return key().qualifier();
-    }
 }

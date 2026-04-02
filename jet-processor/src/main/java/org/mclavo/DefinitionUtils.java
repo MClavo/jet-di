@@ -20,7 +20,6 @@ public final class DefinitionUtils {
     private static final List<String> DEPENDENCY_IMPORTS = List.of(
         "BeanDefinition",
         "BeanProvider",
-        "BeanKey",
         "ScopeProvider",
         "Qualifier"
     );

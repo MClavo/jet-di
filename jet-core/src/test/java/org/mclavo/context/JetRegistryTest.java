@@ -16,7 +16,7 @@ class JetRegistryTest {
     void should_register_and_resolve_single_definition_when_no_qualifier_is_used() {
         // given
         JetRegistry registry = new JetRegistry();
-        BeanDefinition<String> definition = new TestDefinition<>(BeanKey.of(String.class), "value");
+        BeanDefinition<String> definition = new TestDefinition<>("value", String.class, Qualifier.none(), false);
         registry.register(definition);
 
         // when
@@ -32,8 +32,8 @@ class JetRegistryTest {
     void should_register_and_resolve_definition_when_matching_qualifier_is_used() {
         // given
         JetRegistry registry = new JetRegistry();
-        BeanDefinition<String> english = new TestDefinition<>(BeanKey.of(String.class, Qualifier.of("en")), "hello");
-        BeanDefinition<String> spanish = new TestDefinition<>(BeanKey.of(String.class, Qualifier.of("es")), "hola");
+        BeanDefinition<String> english = new TestDefinition<>("hello", String.class, Qualifier.of("en"), false);
+        BeanDefinition<String> spanish = new TestDefinition<>("hola", String.class, Qualifier.of("es"), false);
         registry.register(english);
         registry.register(spanish);
 
@@ -50,7 +50,7 @@ class JetRegistryTest {
     void should_resolve_single_candidate_even_when_candidate_has_qualifier_and_query_has_none() {
         // given
         JetRegistry registry = new JetRegistry();
-        BeanDefinition<String> definition = new TestDefinition<>(BeanKey.of(String.class, Qualifier.of("en")), "hello");
+        BeanDefinition<String> definition = new TestDefinition<>("hello", String.class, Qualifier.of("en"), false);
         registry.register(definition);
 
         // when
@@ -65,7 +65,7 @@ class JetRegistryTest {
     void should_return_empty_when_no_definition_matches_the_given_qualifier() {
         // given
         JetRegistry registry = new JetRegistry();
-        registry.register(new TestDefinition<>(BeanKey.of(String.class, Qualifier.of("en")), "hello"));
+        registry.register(new TestDefinition<>("hello", String.class, Qualifier.of("en"), false));
 
         // when
         Optional<BeanEntry<String>> resolved = registry.resolveEntry(String.class, Qualifier.of("fr"));
@@ -90,8 +90,8 @@ class JetRegistryTest {
     void should_throw_multiple_bean_candidate_exception_when_resolving_type_with_multiple_candidates_and_no_primary() {
         // given
         JetRegistry registry = new JetRegistry();
-        registry.register(new TestDefinition<>(BeanKey.of(String.class, Qualifier.of("en")), "hello"));
-        registry.register(new TestDefinition<>(BeanKey.of(String.class, Qualifier.of("es")), "hola"));
+        registry.register(new TestDefinition<>("hello", String.class, Qualifier.of("en"), false));
+        registry.register(new TestDefinition<>("hola", String.class, Qualifier.of("es"), false));
 
         // when
         MultipleBeanCandidateException exception = assertThrows(
@@ -106,8 +106,8 @@ class JetRegistryTest {
     void should_throw_duplicate_definition_exception_when_same_type_and_qualifier_are_registered_twice() {
         // given
         JetRegistry registry = new JetRegistry();
-        BeanDefinition<String> first = new TestDefinition<>(BeanKey.of(String.class, Qualifier.of("same")), "first");
-        BeanDefinition<String> second = new TestDefinition<>(BeanKey.of(String.class, Qualifier.of("same")), "second");
+        BeanDefinition<String> first = new TestDefinition<>("first", String.class, Qualifier.of("same"), false);
+        BeanDefinition<String> second = new TestDefinition<>("second", String.class, Qualifier.of("same"), false);
         registry.register(first);
 
         // when
@@ -148,22 +148,37 @@ class JetRegistryTest {
     }
 
     private static final class TestDefinition<T> implements BeanDefinition<T> {
-        private final BeanKey<T> key;
         private final T value;
+        private final Class<T> type;
+        private final Qualifier qualifier;
+        private final boolean primary;
 
-        private TestDefinition(BeanKey<T> key, T value) {
-            this.key = key;
+
+        private TestDefinition(T value, Class<T> type, Qualifier qualifier, boolean isPrimary) {
             this.value = value;
-        }
-
-        @Override
-        public BeanKey<T> key() {
-            return key;
+            this.type = type;
+            this.qualifier = qualifier;
+            this.primary = isPrimary;
         }
 
         @Override
         public T apply(BeanProvider beanProvider) {
             return value;
+        }
+
+        @Override
+        public boolean primary() {
+            return primary;
+        }
+
+        @Override
+        public Qualifier qualifier() {
+            return qualifier;
+        }
+
+        @Override
+        public Class<T> type() {
+            return type;
         }
     }
 }
