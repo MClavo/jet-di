@@ -1,5 +1,7 @@
 package org.mclavo.factory;
 
+import org.mclavo.context.JetRegistry;
+
 /**
  * Factory placeholder for future hangar-specific creation and lifecycle concerns.
  */

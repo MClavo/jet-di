@@ -9,6 +9,7 @@ import org.mclavo.annotation.Intake;
 import org.mclavo.annotation.Jet;
 import org.mclavo.context.BeanDefinition;
 import org.mclavo.context.BeanProvider;
+import org.mclavo.context.JetRegistry;
 import org.mclavo.exception.BeanInstantiationException;
 
 /**
