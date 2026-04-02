@@ -3,14 +3,14 @@ package org.mclavo;
 import java.util.List;
 
 /**
- * Immutable metadata used to generate a {@code BeanDefinition} class.
+ * Immutable metadata used to generate a {@link BeanDefinition} class.
  * <p>
  * 
  *  @param packageName The package for the generated class.</li>
  *  @param imports The required imports for the generated source.</li>
  *  @param simpleClassName The simple name of the generated class.</li>
- *  @param beanType The fully qualified type of the bean represented by this definition.</li>
- *  @param qualifierExpression: The qualifier expression used by {@code BeanKey}.</li>
+ *  @param beanType The fully qualified type of the bean represented by this definition (Class type).</li>
+ *  @param qualifierExpression: The qualifier expression.</li>
  *  @param primary Whether this bean is marked as primary.</li>
  *  @param creationExpression The expression used to create the bean instance.</li>
  * 

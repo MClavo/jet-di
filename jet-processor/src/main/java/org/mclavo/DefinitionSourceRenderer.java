@@ -3,7 +3,7 @@ package org.mclavo;
 import java.util.stream.Collectors;
 
 /**
- * Renders Java source code for generated {@code BeanDefinition} implementations.
+ * Renders Java source code for generated {@link BeanDefinition} implementations based on a {@link DefinitionSpec}.
  */
 public final class DefinitionSourceRenderer {
 
