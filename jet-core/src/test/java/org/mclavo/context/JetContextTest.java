@@ -9,7 +9,6 @@ import java.lang.reflect.Field;
 
 import org.junit.jupiter.api.Test;
 import org.mclavo.exception.CircularDependencyException;
-import org.mclavo.factory.JetRegistry;
 
 class JetContextTest {
 
@@ -18,8 +17,8 @@ class JetContextTest {
         // given
         JetContext context = new JetContext();
         JetRegistry registry = extractRegistry(context);
-        registry.register(new ConstantDefinition<>(BeanKey.of(String.class, Qualifier.of("en")), "hello"));
-        registry.register(new ConstantDefinition<>(BeanKey.of(String.class, Qualifier.of("es")), "hola"));
+        registry.register(new TestDefinition<>(BeanKey.of(String.class, Qualifier.of("en")), "hello"));
+        registry.register(new TestDefinition<>(BeanKey.of(String.class, Qualifier.of("es")), "hola"));
 
         // when
         String english = context.provide(String.class, Qualifier.of("en"));
@@ -54,7 +53,7 @@ class JetContextTest {
         // given
         JetContext context = new JetContext();
         JetRegistry registry = extractRegistry(context);
-        registry.register(new ConstantDefinition<>(BeanKey.of(SingletonBean.class), new SingletonBean()));
+        registry.register(new TestDefinition<>(BeanKey.of(SingletonBean.class), new SingletonBean()));
 
         // when
         SingletonBean first = context.provide(SingletonBean.class);
@@ -103,11 +102,11 @@ class JetContextTest {
         }
     }
 
-    private static final class ConstantDefinition<T> implements BeanDefinition<T> {
+    private static final class TestDefinition<T> implements BeanDefinition<T> {
         private final BeanKey<T> key;
         private final T value;
 
-        private ConstantDefinition(BeanKey<T> key, T value) {
+        private TestDefinition(BeanKey<T> key, T value) {
             this.key = key;
             this.value = value;
         }

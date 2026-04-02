@@ -27,7 +27,7 @@ public interface BeanProvider {
      * @param <T> bean type
      * @return resolved bean instance
      */
-    default <T> T provide(Class<T> beanType, String qualifier) {
+    public default <T> T provide(Class<T> beanType, String qualifier) {
         return provide(beanType, Qualifier.of(qualifier));
     }
 }

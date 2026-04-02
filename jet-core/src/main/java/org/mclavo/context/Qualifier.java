@@ -7,7 +7,7 @@ import java.util.Objects;
  *
  * @param value qualifier text; blank means no qualifier
  */
-public record Qualifier(String value) {
+public final record Qualifier(String value) {
     private static final Qualifier NONE = new Qualifier("");
 
     public Qualifier {

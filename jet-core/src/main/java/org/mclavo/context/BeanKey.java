@@ -9,7 +9,7 @@ import java.util.Objects;
  * @param qualifier qualifier used to disambiguate beans of the same type
  * @param <T> bean type
  */
-public record BeanKey<T> (
+public final record BeanKey<T> (
     Class<T> type,
     Qualifier qualifier
 ){

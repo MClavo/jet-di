@@ -5,13 +5,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 
 import org.mclavo.exception.BeanDefinitionLoadingException;
 import org.mclavo.exception.BeanProvisionException;
 import org.mclavo.exception.CircularDependencyException;
-import org.mclavo.factory.JetRegistry;
 
 /**
  * Default runtime context that resolves beans from generated definitions.
@@ -30,6 +30,24 @@ public class JetContext implements BeanProvider {
 
     }
 
+    @Override
+    public <T> T provide(Class<T> beanClass) {
+        return resolve(beanClass, Qualifier.none());
+    }
+
+    @Override
+    public <T> T provide(Class<T> beanType, Qualifier qualifier) {
+        return resolve(beanType, qualifier);
+    }
+
+    @Override
+    public <T> T provide(Class<T> key, String qualifier) {
+        return provide(key, Qualifier.of(qualifier));
+    }
+
+
+    // ────────────────────────── Private Methods ──────────────────────────
+
     /**
      * Loads generated definition providers using Java ServiceLoader.
      *
@@ -47,48 +65,52 @@ public class JetContext implements BeanProvider {
 
         } catch (Exception e) {
             throw new BeanDefinitionLoadingException(
-                "Failed to load BeanDefinitions from ServiceLoader",
-                e);
+                    "Failed to load BeanDefinitions from ServiceLoader",
+                    e);
         }
     }
 
-    /**
-     * @param beanClass bean class
-     * @param <T> bean type
+
+    /**     
+     * Core resolution method that handles bean lookup, instantiation, and circular
+     * dependency detection.
+     *
+     * @param beanType  class of the requested bean
+     * @param qualifier optional qualifier for disambiguation
      * @return resolved bean instance
      */
-    @Override
-    public <T> T provide(Class<T> beanClass) {
-        return resolve(BeanKey.of(beanClass));
-    }
+    private <T> T resolve(Class<T> beanType, Qualifier qualifier) {
+        validateQualifierAndType(beanType, qualifier);
+        
+        Optional<BeanEntry<T>> entryOpt = registry.resolveEntry(beanType, qualifier);
+        if (entryOpt.isEmpty()) {
+            throw new BeanProvisionException(buildBeanProvisionMessage(beanType, qualifier));
+        }
 
-    /**
-     * Resolves a bean using the complete key (type + qualifier).
-     */
-    private <T> T resolve(BeanKey<T> key) {
-        T existing = registry.get(key);
+        BeanEntry<T> entry = entryOpt.get();
+
+        T existing = entry.instance();
         if (existing != null) {
             return existing;
         }
 
         Deque<BeanKey<?>> stack = resolutionStack.get();
+        BeanKey<T> key = BeanKey.of(beanType, qualifier);
         if (stack.contains(key)) {
             throw new CircularDependencyException(buildCircularDependencyMessage(stack, key));
         }
 
         stack.push(key);
         try {
-            BeanDefinition<T> definition = registry.getDefinition(key);
-            if (definition != null) {
-                T created = definition.apply(this);
-                registry.register(key, created);
-                // Return the canonical singleton instance when concurrent creation races happen.
-                return registry.get(key);
-            }
+            synchronized (entry) {
+                T instance = entry.instance();
+                if (instance == null) {
+                    instance = entry.definition().apply(this);
+                    entry.initialize(instance);
+                }
 
-            throw new BeanProvisionException(
-                "No BeanDefinition found for " + key
-                + ". Make sure it is generated and published through ServiceLoader.");
+                return instance;
+            }
 
         } finally {
             stack.pop();
@@ -98,23 +120,36 @@ public class JetContext implements BeanProvider {
         }
     }
 
+    private <T> void validateQualifierAndType(Class<T> type, Qualifier qualifier) {
+        if(type == null) {
+            throw new IllegalArgumentException("Bean type cannot be null");
+        }
+
+        if (qualifier == null) {
+            throw new IllegalArgumentException("Qualifier cannot be null; use Qualifier.none() for no qualifier");
+        }
+    }
+
+
+    //  ────────────────────────── Error Messages Builders ──────────────────────────
+
+    private <T> String buildBeanProvisionMessage(Class<T> beanType, Qualifier qualifier) {
+        StringBuilder message = new StringBuilder("No bean candidate found for ")
+                .append(beanType.getName());
+        if (qualifier != null && !qualifier.isNone()) {
+            message.append(" with qualifier '").append(qualifier).append("'");
+        }
+        return message.toString();
+    }
+
     private String buildCircularDependencyMessage(Deque<BeanKey<?>> stack, BeanKey<?> repeatedKey) {
         List<BeanKey<?>> path = new ArrayList<>(stack);
         Collections.reverse(path);
         path.add(repeatedKey);
 
         return "Circular dependency detected: "
-            + path.stream().map(BeanKey::toString).collect(Collectors.joining(" -> "));
+                + path.stream().map(BeanKey::toString).collect(Collectors.joining(" -> "));
     }
 
-    
-    @Override
-    public <T> T provide(Class<T> key, String qualifier) {
-        return provide(key, Qualifier.of(qualifier));
-    }
 
-    @Override
-    public <T> T provide(Class<T> beanType, Qualifier qualifier) {
-        return resolve(BeanKey.of(beanType, qualifier));
-    }
 }
