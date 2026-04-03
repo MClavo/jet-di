@@ -38,12 +38,14 @@ final class JetRegistry {
 
         } else {
             List<BeanEntry<?>> entries = registry.get(definition.type());
+            /*
             for (BeanEntry<?> entry : entries) {
                 if (entry.qualifier().equals(definition.qualifier())) {
                     throw new DuplicateBeanDefinitionException("Duplicate Bean for "
-                            + definition.type() + " with qualifier " + definition.qualifier());
+                    + definition.type() + " with qualifier " + definition.qualifier());
                 }
-            }
+            } 
+            */
 
             BeanEntry<?> entry = new BeanEntry<>(definition);
             entries.add(entry);
@@ -141,8 +143,11 @@ final class JetRegistry {
 
         // Multiple candidates with the same qualifier, also be multiple primaries, but
         // the error is the same: no unique candidate.
+
+        String MultipleBeanErrorMessage = "Multiple candidates found for %s with qualifier \"%s\"";
+
         throw new MultipleBeanCandidateException(
-                "Multiple candidates found for " + type + " with qualifier " + qualifier);
+                String.format(MultipleBeanErrorMessage, type, qualifier));
     
     }
 

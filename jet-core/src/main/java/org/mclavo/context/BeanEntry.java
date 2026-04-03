@@ -22,8 +22,6 @@ package org.mclavo.context;
  */
 final class BeanEntry<T> {
     private final BeanDefinition<T> definition;
-    // TODO: add primary support, should be inside the definition.
-    //final boolean primary; 
     
     // Scope ?
     private volatile T instance; // nullable for lazy singletons or prototypes
@@ -42,7 +40,7 @@ final class BeanEntry<T> {
 
 
     boolean isPrimary() {
-        return false; // TODO: implement primary support
+        return definition.primary();
     }
 
     T instance() {

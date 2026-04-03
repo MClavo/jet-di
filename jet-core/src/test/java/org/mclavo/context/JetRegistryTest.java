@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
-import org.mclavo.exception.DuplicateBeanDefinitionException;
 import org.mclavo.exception.MultipleBeanCandidateException;
 
 class JetRegistryTest {
@@ -87,6 +86,22 @@ class JetRegistryTest {
     }
 
     @Test
+    void should_resolve_single_candidate_when_multiple_candidates_with_same_type_and_one_primary() {
+        // given
+        JetRegistry registry = new JetRegistry();
+        registry.register(new TestDefinition<>("hola", String.class, Qualifier.of("es"), false));
+        registry.register(new TestDefinition<>("hola primary", String.class, Qualifier.of("es"), true));
+
+        // when
+        Optional<BeanEntry<String>> resolved = registry.resolveEntry(String.class, Qualifier.of("es"));
+
+        // then
+        assertTrue(resolved.isPresent());
+        assertEquals(Qualifier.of("es"), resolved.get().qualifier());
+        assertEquals("hola primary", resolved.get().definition().apply(null));
+    }
+
+    @Test
     void should_throw_multiple_bean_candidate_exception_when_resolving_type_with_multiple_candidates_and_no_primary() {
         // given
         JetRegistry registry = new JetRegistry();
@@ -103,20 +118,19 @@ class JetRegistryTest {
     }
 
     @Test
-    void should_throw_duplicate_definition_exception_when_same_type_and_qualifier_are_registered_twice() {
+    void should_throw_multiple_bean_candidate_exception_when_resolving_type_with_multiple_candidates_and_all_primary() {
         // given
         JetRegistry registry = new JetRegistry();
-        BeanDefinition<String> first = new TestDefinition<>("first", String.class, Qualifier.of("same"), false);
-        BeanDefinition<String> second = new TestDefinition<>("second", String.class, Qualifier.of("same"), false);
-        registry.register(first);
+        registry.register(new TestDefinition<>("hello", String.class, Qualifier.of("en"), true));
+        registry.register(new TestDefinition<>("hola", String.class, Qualifier.of("es"), true));
 
         // when
-        DuplicateBeanDefinitionException exception = assertThrows(
-                DuplicateBeanDefinitionException.class,
-                () -> registry.register(second));
+        MultipleBeanCandidateException exception = assertThrows(
+                MultipleBeanCandidateException.class,
+                () -> registry.resolveEntry(String.class, Qualifier.none()));
 
         // then
-        assertTrue(exception.getMessage().contains("Duplicate Bean for class java.lang.String"));
+        assertTrue(exception.getMessage().contains("Multiple candidates found for class java.lang.String"));
     }
 
     @Test

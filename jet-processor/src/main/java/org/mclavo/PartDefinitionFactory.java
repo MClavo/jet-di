@@ -5,6 +5,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.util.Elements;
 
 import org.mclavo.annotation.Fuel;
+import org.mclavo.annotation.Maverick;
 import org.mclavo.exception.DefinitionFactoryException;
 
 /**
@@ -18,9 +19,9 @@ public final class PartDefinitionFactory implements SpecDefinitionFactory {
     /**
      * Creates a definition specification from a factory method element.
      *
-        * @param element annotated element expected to be a method
-        * @param elements annotation processing utility facade
-        * @return generation spec describing the part definition source
+     * @param element annotated element expected to be a method
+     * @param elements annotation processing utility facade
+     * @return generation spec describing the part definition source
      * @throws DefinitionFactoryException when the input element is not a method
      */
     @Override
@@ -36,7 +37,7 @@ public final class PartDefinitionFactory implements SpecDefinitionFactory {
             .beanType(getBeanType(methodElement))
             .qualifierExpression(getQualifierExpression(methodElement))
             // TODO: implement support for "@Primary" annotation
-            .primary(false)
+            .primary(isPrimary(methodElement))
             .creationExpression(getCreationExpression(methodElement, elements))
             .build();
     }
@@ -78,6 +79,10 @@ public final class PartDefinitionFactory implements SpecDefinitionFactory {
 
         return DefinitionUtils.qualifierOfExpression(fuel.value());
 
+    }
+
+    private boolean isPrimary(ExecutableElement methodElement) {
+        return methodElement.getAnnotation(Maverick.class) != null;
     }
 
     /**
