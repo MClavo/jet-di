@@ -8,7 +8,7 @@ import org.mclavo.exception.DefinitionFactoryException;
 /**
  * Contract for translating annotated program elements into {@link DefinitionSpec}s.
  */
-public interface SpecDefinitionFactory {
+interface SpecDefinitionFactory {
 
     /**
      * Creates a generation spec from the given element.

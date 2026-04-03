@@ -6,7 +6,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.mclavo.exception.DuplicateBeanDefinitionException;
 import org.mclavo.exception.MultipleBeanCandidateException;
 
 /**

@@ -11,7 +11,7 @@ import org.mclavo.exception.DefinitionFactoryException;
 /**
  * Builds {@link DefinitionSpec}s for {@code @Part} factory methods found in {@code @Hangar} classes.
  */
-public final class PartDefinitionFactory implements SpecDefinitionFactory {
+final class PartDefinitionFactory implements SpecDefinitionFactory {
 
     private static final String METHOD_CREATION_TEMPLATE = "beanProvider.provide(%s.class).%s";
 
@@ -36,7 +36,6 @@ public final class PartDefinitionFactory implements SpecDefinitionFactory {
             .simpleClassName(getClassName(methodElement))
             .beanType(getBeanType(methodElement))
             .qualifierExpression(getQualifierExpression(methodElement))
-            // TODO: implement support for "@Primary" annotation
             .primary(isPrimary(methodElement))
             .creationExpression(getCreationExpression(methodElement, elements))
             .build();

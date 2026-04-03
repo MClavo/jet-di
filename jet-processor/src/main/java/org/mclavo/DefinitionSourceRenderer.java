@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
 /**
  * Renders Java source code for generated {@link BeanDefinition} implementations based on a {@link DefinitionSpec}.
  */
-public final class DefinitionSourceRenderer {
+final class DefinitionSourceRenderer {
 
     private static final String DEFINITION_TEMPLATE =
     """
@@ -48,7 +48,7 @@ public final class DefinitionSourceRenderer {
      * @param spec metadata used to render package, imports, class name and creation logic
      * @return Java source code for the generated definition class
      */
-    public static String render(DefinitionSpec spec) {
+    static String render(DefinitionSpec spec) {
         String importsBlock = spec.getImports().stream()
             .sorted()
             .map(importName -> "import " + importName + ";")

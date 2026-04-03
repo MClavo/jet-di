@@ -40,10 +40,11 @@ import org.mclavo.exception.DefinitionFactoryException;
     "org.mclavo.annotation.Intake",
     "org.mclavo.annotation.Hangar",
     "org.mclavo.annotation.Part",
-    "org.mclavo.annotation.Fuel"
+    "org.mclavo.annotation.Fuel",
+    "org.mclavo.annotation.Maverick"
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
-public class JetProcessor extends AbstractProcessor {
+public final class JetProcessor extends AbstractProcessor {
     private final Set<String> processedBeanDefinitions = new LinkedHashSet<>();
     private final SpecDefinitionFactory jetDefinitionFactory = new JetDefinitionFactory();
     private final SpecDefinitionFactory partDefinitionFactory = new PartDefinitionFactory();

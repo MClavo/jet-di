@@ -16,7 +16,7 @@ import org.mclavo.exception.DefinitionFactoryException;
  * <p>
  * If a class declares more than one constructor, exactly one must be annotated with {@code @Intake}.
  */
-public final class JetDefinitionFactory implements SpecDefinitionFactory {
+final class JetDefinitionFactory implements SpecDefinitionFactory {
 
     /**
      * Creates a definition specification from a class element.
@@ -38,8 +38,9 @@ public final class JetDefinitionFactory implements SpecDefinitionFactory {
             .simpleClassName(getClassName(typeElement))
             .beanType(getBeanType(typeElement))
             .qualifierExpression(DefinitionUtils.qualifierNoneExpression())
-            // TODO: implement support for "@Primary" annotation
-            .primary(false)
+            // Class definitions do not support @Maverick (primary) annotation,
+            // this may be revisited in the future if there is a use case for it.
+            .primary(false) 
             .creationExpression(getCreationExpression(typeElement))
             .build();
     }
@@ -84,12 +85,9 @@ public final class JetDefinitionFactory implements SpecDefinitionFactory {
 
         // If there is more than one constructor, the factory needs to determine
         // which one to use based on @Intake annotations.
-
         ExecutableElement constructor;
-
         if (constructors.size() > 1) {
             constructor = checkForInjectableConstructors(constructors, beanType);
-            
         } else {
             constructor = constructors.get(0);
         }
