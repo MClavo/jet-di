@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Declares a qualifier value for a bean provided by a {@code @Part} method.
+ * Declares a qualifier value for a bean provided by a {@link Part} method.
  */
 @Target({
     ElementType.METHOD,

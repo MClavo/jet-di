@@ -6,9 +6,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a method in a {@link Hangar} class as a bean factory method.
+ * Indicates that the bean provided by a {@link Part} method should be
+ * considered the primary candidate for injection when multiple beans of the
+ * same type are available.
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Part {
+public @interface Maverick {
 }

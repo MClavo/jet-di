@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a class that declares {@code @Part} factory methods.
+ * Marks a class that declares {@link Part} factory methods.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
