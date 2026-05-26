@@ -29,7 +29,7 @@ java {
 }
 
 application {
-    mainClass = 'org.mclavo.App'
+    mainClass = 'org.mclavo.example.App'
 }
 
 tasks.named('test') {

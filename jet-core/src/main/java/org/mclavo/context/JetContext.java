@@ -59,7 +59,7 @@ public class JetContext implements BeanProvider {
 
         try {
             for (BeanDefinition<?> definition : definitionLoader) {
-                System.out.println("Loaded BeanDefinition: " + definition.getClass().getName());
+                //System.out.println("Loaded BeanDefinition: " + definition.getClass().getName());
                 registry.register(definition);
             }
 
