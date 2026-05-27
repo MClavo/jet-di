@@ -9,28 +9,12 @@ plugins {
     id 'application'
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     annotationProcessor project(':jet-processor')
     implementation project(':jet-processor')
     implementation project(':jet-core')
 }
 
-// (Removed temporary -processor override; processor is registered via META-INF)
-
-// Apply a specific Java toolchain to ease working on different environments.
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
 application {
     mainClass = 'io.github.mclavo.jet.example.App'
-}
-
-tasks.named('test') {
 }
