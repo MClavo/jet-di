@@ -1,31 +1,32 @@
 # Jet Core
 
-Core runtime module for JET dependency resolution.
+Core runtime and public API for JET dependency resolution.
 
 ## Responsibilities
 
-- Defines core annotations used by runtime and processor modules.
-- Provides context APIs for bean lookup and qualifier handling.
-- Stores generated bean definitions and singleton instances in a concurrent registry.
-- Instantiates and injects beans at runtime using reflection.
-- Exposes a small exception hierarchy for framework-specific failures.
+- Defines public annotations used by application code and the annotation processor (`@Jet`, `@Hangar`, `@Part`, `@Intake`, `@Fuel`, `@Maverick`).
+- Provides runtime resolution contracts (`BeanDefinition`, `BeanProvider`, `ScopeProvider`, `Qualifier`).
+- Loads generated bean definitions with `ServiceLoader` and keeps them in an in-memory registry.
+- Resolves dependencies with qualifier + primary rules and guards against circular dependencies.
+- Exposes framework-specific runtime exceptions.
 
 ## Main packages
 
-- `org.mclavo.annotation`: bean and factory annotations (`@Jet`, `@Hangar`, `@Part`, `@Intake`, etc.).
-- `org.mclavo.context`: bean contracts, qualifier value object, scopes, and runtime context.
-- `org.mclavo.factory`: runtime bean factory and registry.
-- `org.mclavo.exception`: reusable framework exception types.
+- `io.github.mclavo.jet.annotation`: bean, factory, and qualifier annotations.
+- `io.github.mclavo.jet.context`: runtime container, scopes, bean keys, and resolution interfaces.
+- `io.github.mclavo.jet.exception`: base and specialized unchecked exceptions.
 
 ## Runtime flow
 
-1. `ControlTower.run(...)` creates a `JetContext`.
-2. `JetContext` loads generated `BeanDefinition` implementations through `ServiceLoader`.
-3. Bean requests are resolved from `JetRegistry`.
-4. If needed, `JetFactory` creates instances and injects `@Intake` fields.
-5. Scope behavior is applied through `ScopeProvider` implementations.
+1. `ControlTower.run(Class<?>)` creates a `JetContext` (the `bootClass` value is currently not used by runtime discovery).
+2. `JetContext` uses `ServiceLoader` to load generated `BeanDefinition` implementations.
+3. `JetRegistry` stores definitions keyed by exact bean type and selects candidates by qualifier/primary rules.
+4. On `provide(...)`, `JetContext` resolves dependencies recursively and tracks a thread-local resolution stack to detect cycles.
+5. Bean creation runs through generated `BeanDefinition.apply(...)` logic, typically wrapped in `ScopeProvider.singletonScope(...)`.
 
-## Notes
+## Current behavior notes
 
-- Singleton creation uses concurrent/synchronized guards to avoid duplicate initialization.
-- Qualifier-aware lookups are currently scaffolded and default to type-only resolution.
+- Resolution is based on exact registered type; interface/supertype fallback is not added automatically.
+- If no qualifier is requested and only one candidate exists, that candidate is returned even when it has a qualifier.
+- `@Intake` supports constructor selection in generated definitions; field injection is not implemented in runtime.
+- `ScopeProvider.prototypeScope(...)` exists in API, but generated definitions currently use singleton scope.

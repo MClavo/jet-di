@@ -1,6 +1,6 @@
 <div align="center">
 
-# JET
+# JET DI
 
 **A compact Java dependency injection framework with a flight plan of its own.**
 
@@ -145,21 +145,30 @@ Generated beans are lazy singletons. A bean is created on first resolution, then
 
 ### Injection Patterns
 
-Implemented injection paths are:
+JET intentionally focuses on constructor-based dependency injection.
 
+Implemented injection paths are:
 - Constructor parameters on `@Jet` classes.
 - Constructor parameters on generated `@Hangar` beans.
 - Parameters on `@Part` factory methods.
 - Qualified parameters with `@Fuel(...)`.
 
-`@Intake` can target fields at the annotation level, but field injection is not currently implemented by the processor or runtime.
+> [!NOTE]
+> Field injection is not supported by design. JET favors constructor injection with `@Intake` because it:
+>- makes dependencies explicit at object creation time;
+>- improves immutability by allowing `final` fields;
+>- makes components easier to test without container magic;
+>- avoids partially initialized objects;
+>- keeps the dependency graph easier to reason about.
+
+
 
 ### Configuration Model
 
 JET uses source annotations and generated metadata as configuration. During compilation, `jet-processor` generates one `BeanDefinition` implementation per discovered `@Jet` class and `@Part` method. It also writes:
 
 ```text
-META-INF/services/org.mclavo.context.BeanDefinition
+META-INF/services/io.github.mclavo.jet.context.BeanDefinition
 ```
 
 At runtime, `JetContext` uses `ServiceLoader<BeanDefinition>` to discover and register those definitions. The `bootClass` passed to `ControlTower.run(...)` is currently accepted as bootstrap metadata; it does not filter packages or drive scanning.
@@ -209,7 +218,6 @@ The naming is intentionally distinctive. It helps the project feel like its own 
 - JET requires Java 21 in the current Gradle configuration.
 - Artifacts are not published from this repository; the example consumes modules directly with project dependencies.
 - Generated definitions are singleton-scoped only.
-- Field injection is not implemented.
 - There are no lifecycle callbacks, shutdown hooks, profiles, conditional beans, or external configuration binding.
 - Type resolution uses registered bean types; it does not automatically search assignable implementations for every interface or superclass.
 - `@Maverick` currently applies to `@Part` methods, not `@Jet` classes.
