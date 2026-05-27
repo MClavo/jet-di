@@ -10,3 +10,8 @@
 # Ignore Gradle build output directory
 build
 bin
+
+# Ignore generated files
+*.asc
+*.gpg
+*.key

@@ -1,4 +1,5 @@
 plugins {
+    id "com.vanniktech.maven.publish" version "0.36.0" apply false
 }
 
 allprojects {
@@ -20,6 +21,48 @@ subprojects {
 
         tasks.withType(Test).configureEach {
             useJUnitPlatform()
+        }
+    }
+}
+
+configure(subprojects.findAll { it.name in ["jet-core", "jet-processor"] }) {
+    apply plugin: "com.vanniktech.maven.publish"
+
+    mavenPublishing {
+        publishToMavenCentral()
+        if (providers.gradleProperty("signingInMemoryKey").isPresent()) {
+            signAllPublications()
+        }
+
+        pom {
+            name = project.name
+            description = project.name == "jet-core"
+                    ? "Runtime API and core container for Jet DI."
+                    : "Annotation processor for Jet DI."
+            inceptionYear = "2026"
+            url = "https://github.com/mclavo/jet-di"
+
+            licenses {
+                license {
+                    name = "MIT License"
+                    url = "https://opensource.org/licenses/MIT"
+                    distribution = "repo"
+                }
+            }
+
+            developers {
+                developer {
+                    id = "mclavo"
+                    name = "mclavo"
+                    url = "https://github.com/mclavo"
+                }
+            }
+
+            scm {
+                url = "https://github.com/mclavo/jet-di"
+                connection = "scm:git:git://github.com/mclavo/jet-di.git"
+                developerConnection = "scm:git:ssh://git@github.com/mclavo/jet-di.git"
+            }
         }
     }
 }
