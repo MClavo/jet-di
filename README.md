@@ -1,15 +1,17 @@
 <div align="center">
 
-# JET DI
+# Jet DI
 
 **A compact Java dependency injection framework with a flight plan of its own.**
 
 ![Java 21](https://img.shields.io/badge/Java-21-orange?style=flat-square)
 ![Gradle 8.14.3](https://img.shields.io/badge/Gradle-8.14.3-02303A?style=flat-square&logo=gradle&logoColor=white)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.mclavo/jet-core?style=flat-square)](https://central.sonatype.com/artifact/io.github.mclavo/jet-core)
 [![Build and Test](https://github.com/mclavo/jet-di/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/mclavo/jet-di/actions/workflows/build-and-test.yml)
-![Version 0.4.0](https://img.shields.io/badge/version-0.4.0-blue?style=flat-square)
+[![Publish to Maven Central](https://github.com/mclavo/jet-di/actions/workflows/publish-to-maven-central.yml/badge.svg)](https://github.com/mclavo/jet-di/actions/workflows/publish-to-maven-central.yml)
+![License](https://img.shields.io/github/license/mclavo/jet-di?style=flat-square)
 
-[Overview](#overview) • [Getting Started](#getting-started) • [Example Guide](jet-example/README.md) • [Usage](#usage) • [Core Concepts](#core-concepts) • [Architecture](#architecture) • [Limitations](#limitations)
+[Overview](#overview) • [Installation](#installation) • [Getting Started](#getting-started) • [Example Guide](jet-example/README.md) • [Local Development](#local-development) • [Core Concepts](#core-concepts) • [Architecture](#architecture) • [Roadmap](#roadmap) • [Limitations](#limitations)
 
 </div>
 
@@ -21,6 +23,47 @@ The project is also deliberately a little more memorable than another `@Inject` 
 
 > [!NOTE]
 > This repository is best read as both a usable mini-framework and an engineering portfolio project. It focuses on dependency resolution, generated metadata, qualifier handling, primary candidate selection, and clear runtime failures rather than breadth of features.
+
+## Quick Example
+
+```java
+@Jet
+public class AlertService {
+
+    private final NotificationSender sender;
+
+    @Intake
+    public AlertService(@Fuel("slack") NotificationSender sender) {
+        this.sender = sender;
+    }
+
+    public void send(String message) {
+        sender.send(message);
+    }
+}
+```
+
+```java
+@Hangar
+public class NotificationHangar {
+
+    @Part
+    @Fuel("slack")
+    public NotificationSender slackSender() {
+        return new SlackNotificationSender();
+    }
+}
+```
+
+```java
+JetContext context = ControlTower.run(App.class);
+
+AlertService service = context.provide(AlertService.class);
+
+service.send("Build completed successfully.");
+```
+
+For a complete runnable walkthrough, see the Notification Center example in [`jet-example`](jet-example/README.md).
 
 ## Why I Built This
 
@@ -39,6 +82,51 @@ It is intentionally small. The goal is not to replace Spring, Guice, or Dagger, 
 - Primary candidate selection for `@Part` methods with `@Maverick`.
 - Circular dependency detection with a readable dependency path.
 - Small exception hierarchy for framework-specific failures.
+
+## Installation
+
+JET is published on Maven Central.
+
+### Gradle
+
+```groovy
+dependencies {
+    implementation "io.github.mclavo:jet-core:0.4.0"
+    annotationProcessor "io.github.mclavo:jet-processor:0.4.0"
+}
+```
+
+### Maven
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>io.github.mclavo</groupId>
+        <artifactId>jet-core</artifactId>
+        <version>0.4.0</version>
+    </dependency>
+</dependencies>
+
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.14.0</version>
+
+            <configuration>
+                <annotationProcessorPaths>
+                    <path>
+                        <groupId>io.github.mclavo</groupId>
+                        <artifactId>jet-processor</artifactId>
+                        <version>0.4.0</version>
+                    </path>
+                </annotationProcessorPaths>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+```
 
 ## Project Structure
 
@@ -79,7 +167,7 @@ On Windows PowerShell or CMD:
 .\gradlew.bat :jet-example:run
 ```
 
-The example is the best starting point for learning the framework. Read [`jet-example/README.md`](jet-example/README.md), run the example from the repository root, and then experiment with the annotations in `jet-example/src/main/java/org/mclavo/example`.
+The example is the best starting point for learning the framework. Read [`jet-example/README.md`](jet-example/README.md), run the example from the repository root, and then experiment with the annotations in `jet-example/src/main/java/io/github/mclavo/jet/example`.
 
 ### Run Core Tests
 
@@ -87,9 +175,9 @@ The example is the best starting point for learning the framework. Read [`jet-ex
 ./gradlew :jet-core:test
 ```
 
-## Usage
+## Local Development
 
-JET is currently used from source as a Gradle multi-project build. A module that wants to use the framework needs the core runtime and the annotation processor:
+Inside this repository, modules use Gradle project dependencies instead of the published Maven Central artifacts:
 
 ```groovy
 dependencies {
@@ -156,11 +244,11 @@ Implemented injection paths are:
 
 > [!NOTE]
 > Field injection is not supported by design. JET favors constructor injection with `@Intake` because it:
->- makes dependencies explicit at object creation time;
->- improves immutability by allowing `final` fields;
->- makes components easier to test without container magic;
->- avoids partially initialized objects;
->- keeps the dependency graph easier to reason about.
+> - makes dependencies explicit at object creation time;
+> - improves immutability by allowing `final` fields;
+> - makes components easier to test without container magic;
+> - avoids partially initialized objects;
+> - keeps the dependency graph easier to reason about.
 
 
 
@@ -214,10 +302,20 @@ JET favors readable generated code and predictable resolution over feature compl
 
 The naming is intentionally distinctive. It helps the project feel like its own framework, but the mapping to common DI ideas stays clear: `@Jet` is a managed component, `@Hangar` is a configuration/factory class, `@Part` is a provider method, `@Intake` is an injection point, `@Fuel` is a qualifier, and `@Maverick` is a primary bean.
 
+## Roadmap
+JET DI is intentionally small, but several areas are good candidates for future versions:
+
+- Evaluate migrating to Java 25 to use Java's Class-File API for direct `.class` generation.
+- Prototype-scoped beans through a public scope annotation and generated `prototypeScope(...)` definitions.
+- Stronger annotation processor tests using compile-time testing fixtures.
+- Better assignable-type resolution for interfaces and supertypes, while keeping ambiguity rules explicit.
+- Primary candidate support for `@Jet` classes, not only `@Part` factory methods.
+
+Non-goals remain equally important: JET DI does not aim to become a Spring replacement, a full application framework, or a runtime classpath scanner.
+
 ## Limitations
 
 - JET requires Java 21 in the current Gradle configuration.
-- Artifacts are not published from this repository; the example consumes modules directly with project dependencies.
 - Generated definitions are singleton-scoped only.
 - There are no lifecycle callbacks, shutdown hooks, profiles, conditional beans, or external configuration binding.
 - Type resolution uses registered bean types; it does not automatically search assignable implementations for every interface or superclass.
