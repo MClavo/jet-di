@@ -6,7 +6,8 @@
 
 ![Java 21](https://img.shields.io/badge/Java-21-orange?style=flat-square)
 ![Gradle 8.14.3](https://img.shields.io/badge/Gradle-8.14.3-02303A?style=flat-square&logo=gradle&logoColor=white)
-![Version 0.3](https://img.shields.io/badge/version-0.3-blue?style=flat-square)
+[![Build and Test](https://github.com/mclavo/jet-di/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/mclavo/jet-di/actions/workflows/build-and-test.yml)
+![Version 0.4.0](https://img.shields.io/badge/version-0.4.0-blue?style=flat-square)
 
 [Overview](#overview) • [Getting Started](#getting-started) • [Example Guide](jet-example/README.md) • [Usage](#usage) • [Core Concepts](#core-concepts) • [Architecture](#architecture) • [Limitations](#limitations)
 
