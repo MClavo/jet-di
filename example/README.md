@@ -9,13 +9,13 @@ The example is deterministic and console-only. It does not use menus, user input
 From the repository root:
 
 ```bash
-./gradlew :jet-example:run
+./gradlew :example:run
 ```
 
 On Windows PowerShell or CMD:
 
 ```powershell
-.\gradlew.bat :jet-example:run
+.\gradlew.bat :example:run
 ```
 
 You should see output for the Notification Center, including generated `BeanDefinition` classes being loaded, a multi-level dependency graph, qualified formatter injection, `@Maverick` default sender selection, and a direct qualified sender lookup.
@@ -23,7 +23,7 @@ You should see output for the Notification Center, including generated `BeanDefi
 ## Example Shape
 
 ```text
-jet-example
+example
 +-- src/main/java/org/mclavo/example
     +-- App.java
     +-- notification
@@ -122,7 +122,7 @@ context.provide(MessageFormatter.class, "json");
 ## Experiments
 
 1. Change the default sender.
-Move `@Maverick` from `slackSender()` to `consoleSender()` in `NotificationHangar`, then run `./gradlew :jet-example:run` again. The unqualified `NotificationSender` injection should switch to console.
+Move `@Maverick` from `slackSender()` to `consoleSender()` in `NotificationHangar`, then run `./gradlew :example:run` again. The unqualified `NotificationSender` injection should switch to console.
 
 2. Change the default formatter.
 Move `@Maverick` from `plainTextFormatter()` to `markdownFormatter()`, then run the example. The unqualified formatter injected into `AlertService` should produce Markdown.
@@ -140,11 +140,11 @@ Remove `@Maverick` from the sender parts while keeping multiple `NotificationSen
 Ask for a qualifier that does not exist, such as `context.provide(NotificationSender.class, "pager")`. JET should report that it cannot provision that bean.
 
 7. Inspect generated code.
-After a build, look under `jet-example/build/generated/sources/annotationProcessor/java/main`. The generated definitions show how JET turns annotations into runtime metadata loaded through `ServiceLoader`.
+After a build, look under `example/build/generated/sources/annotationProcessor/java/main`. The generated definitions show how JET turns annotations into runtime metadata loaded through `ServiceLoader`.
 
 ## Keep In Mind
 
-- Re-run `./gradlew :jet-example:run` after changing annotations so annotation processing regenerates metadata.
+- Re-run `./gradlew :example:run` after changing annotations so annotation processing regenerates metadata.
 - `@Maverick` applies to `@Part` methods, not `@Jet` classes.
 - Field injection is not implemented; use constructor injection with `@Intake`.
 - Type resolution uses the exact registered return type of a `@Part` method.

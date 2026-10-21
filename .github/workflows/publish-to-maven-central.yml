@@ -47,7 +47,7 @@ jobs:
         run: ./gradlew clean build --no-daemon
 
       - name: Run Notification Center example
-        run: ./gradlew :jet-example:run --no-daemon
+        run: ./gradlew :example:run --no-daemon
 
       - name: Publish and release to Maven Central
         run: ./gradlew publishAndReleaseToMavenCentral --no-daemon

@@ -2,19 +2,19 @@
 
 ## Repo Shape
 
-- Gradle multi-project Java repo: `jet-core`, `jet-processor`, `jet-example`; Java toolchain is 21.
-- `jet-core` owns public annotations/runtime (`io.github.mclavo.jet.annotation`, `io.github.mclavo.jet.context`, `io.github.mclavo.jet.exception`).
-- `jet-processor` is the annotation processor; it is registered by `jet-processor/src/main/resources/META-INF/services/javax.annotation.processing.Processor`.
-- `jet-example` is the runnable integration sample; its entrypoint is `example.io.github.mclavo.jet.App` via the Gradle `application` plugin.
-- `jet-example/README.md` is the canonical guide for the Notification Center example; the root README should link to it instead of duplicating long example snippets.
+- Gradle multi-project Java repo: `core`, `processor`, `example`; Java toolchain is 21.
+- `core` owns public annotations/runtime (`io.github.mclavo.jet.annotation`, `io.github.mclavo.jet.context`, `io.github.mclavo.jet.exception`).
+- `processor` is the annotation processor; it is registered by `processor/src/main/resources/META-INF/services/javax.annotation.processing.Processor`.
+- `example` is the runnable integration sample; its entrypoint is `example.io.github.mclavo.jet.App` via the Gradle `application` plugin.
+- `example/README.md` is the canonical guide for the Notification Center example; the root README should link to it instead of duplicating long example snippets.
 
 ## Commands
 
 - Build all modules: `./gradlew build`.
-- Run the sample app from the repository root and exercise generated DI wiring: `./gradlew :jet-example:run`.
-- On Windows, run the sample with `./gradlew.bat :jet-example:run`.
-- Current core test task: `./gradlew :jet-core:test`; do not treat it as strong JUnit coverage until `useJUnitPlatform()` is enabled in `jet-core/build.gradle`.
-- Focused JUnit selection currently fails in `jet-core`: `./gradlew :jet-core:test --tests context.io.github.mclavo.jet.JetRegistryTest` returns “No tests found”.
+- Run the sample app from the repository root and exercise generated DI wiring: `./gradlew :example:run`.
+- On Windows, run the sample with `./gradlew.bat :example:run`.
+- Current core test task: `./gradlew :core:test`; do not treat it as strong JUnit coverage until `useJUnitPlatform()` is enabled in `core/build.gradle`.
+- Focused JUnit selection currently fails in `core`: `./gradlew :core:test --tests context.io.github.mclavo.jet.JetRegistryTest` returns “No tests found”.
 - No CI workflow, formatter, linter, or pre-commit config is present; do not invent those commands.
 
 ## Framework Wiring Gotchas
@@ -31,6 +31,6 @@
 ## Change Guidance
 
 - If touching annotations or resolution semantics, update both `README.md` and the processor/runtime code paths; the names intentionally differ from standard DI terms.
-- If touching `jet-processor`, verify with `./gradlew :jet-example:run`, not only compilation, because the example confirms annotation processing, ServiceLoader metadata, and runtime resolution together.
-- If touching the Notification Center example, update `jet-example/README.md` first and only keep a short link/summary in the root `README.md`.
+- If touching `processor`, verify with `./gradlew :example:run`, not only compilation, because the example confirms annotation processing, ServiceLoader metadata, and runtime resolution together.
+- If touching the Notification Center example, update `example/README.md` first and only keep a short link/summary in the root `README.md`.
 - Treat `build/`, `.gradle/`, IDE metadata, and generated class files as artifacts unless the user explicitly asks about them.

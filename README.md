@@ -11,7 +11,7 @@
 [![Publish to Maven Central](https://github.com/mclavo/jet-di/actions/workflows/publish-to-maven-central.yml/badge.svg)](https://github.com/mclavo/jet-di/actions/workflows/publish-to-maven-central.yml)
 ![License](https://img.shields.io/github/license/mclavo/jet-di?style=flat-square)
 
-[Overview](#overview) • [Installation](#installation) • [Getting Started](#getting-started) • [Example Guide](jet-example/README.md) • [Local Development](#local-development) • [Core Concepts](#core-concepts) • [Architecture](#architecture) • [Roadmap](#roadmap) • [Limitations](#limitations)
+[Overview](#overview) • [Installation](#installation) • [Getting Started](#getting-started) • [Example Guide](example/README.md) • [Local Development](#local-development) • [Core Concepts](#core-concepts) • [Architecture](#architecture) • [Roadmap](#roadmap) • [Limitations](#limitations)
 
 </div>
 
@@ -63,7 +63,7 @@ AlertService service = context.provide(AlertService.class);
 service.send("Build completed successfully.");
 ```
 
-For a complete runnable walkthrough, see the Notification Center example in [`jet-example`](jet-example/README.md).
+For a complete runnable walkthrough, see the Notification Center example in [`example`](example/README.md).
 
 ## Why I Built This
 
@@ -132,9 +132,9 @@ dependencies {
 
 | Module | Purpose |
 | --- | --- |
-| `jet-core` | Runtime API, annotations, context, registry, qualifiers, scopes, and exceptions. |
-| `jet-processor` | Annotation processor that generates `BeanDefinition` implementations and `META-INF/services` metadata. |
-| `jet-example` | Runnable Notification Center sample. See [`jet-example/README.md`](jet-example/README.md) for the walkthrough and experiments. |
+| `core` | Runtime API, annotations, context, registry, qualifiers, scopes, and exceptions. |
+| `processor` | Annotation processor that generates `BeanDefinition` implementations and `META-INF/services` metadata. |
+| `example` | Runnable Notification Center sample. See [`example/README.md`](example/README.md) for the walkthrough and experiments. |
 
 ## Getting Started
 
@@ -158,21 +158,21 @@ On Windows PowerShell or CMD:
 ### Run The Example
 
 ```bash
-./gradlew :jet-example:run
+./gradlew :example:run
 ```
 
 On Windows PowerShell or CMD:
 
 ```powershell
-.\gradlew.bat :jet-example:run
+.\gradlew.bat :example:run
 ```
 
-The example is the best starting point for learning the framework. Read [`jet-example/README.md`](jet-example/README.md), run the example from the repository root, and then experiment with the annotations in `jet-example/src/main/java/io/github/mclavo/jet/example`.
+The example is the best starting point for learning the framework. Read [`example/README.md`](example/README.md), run the example from the repository root, and then experiment with the annotations in `example/src/main/java/io/github/mclavo/jet/example`.
 
 ### Run Core Tests
 
 ```bash
-./gradlew :jet-core:test
+./gradlew :core:test
 ```
 
 ## Local Development
@@ -181,14 +181,14 @@ Inside this repository, modules use Gradle project dependencies instead of the p
 
 ```groovy
 dependencies {
-    annotationProcessor project(':jet-processor')
-    implementation project(':jet-core')
+    annotationProcessor project(':processor')
+    implementation project(':core')
 }
 ```
 
-`jet-example/build.gradle` also declares `implementation project(':jet-processor')` while developing inside this repository, but application code uses the public runtime API from `jet-core`.
+`example/build.gradle` also declares `implementation project(':processor')` while developing inside this repository, but application code uses the public runtime API from `core`.
 
-For a complete runnable walkthrough, use the Notification Center guide in [`jet-example/README.md`](jet-example/README.md). It explains `@Jet`, `@Intake`, `@Hangar`, `@Part`, `@Fuel`, `@Maverick`, and `JetContext.provide(...)` with concrete files you can modify and run.
+For a complete runnable walkthrough, use the Notification Center guide in [`example/README.md`](example/README.md). It explains `@Jet`, `@Intake`, `@Hangar`, `@Part`, `@Fuel`, `@Maverick`, and `JetContext.provide(...)` with concrete files you can modify and run.
 
 ## Core Concepts
 
@@ -230,7 +230,7 @@ Generated definitions register the exact type they represent. For `@Jet` classes
 
 Generated beans are lazy singletons. A bean is created on first resolution, then reused for later requests. The generated definition uses `ScopeProvider.singletonScope(...)`, and `JetContext` also stores the initialized instance in the registry.
 
-`ScopeProvider.prototypeScope(...)` exists in `jet-core`, but the current annotation processor does not generate prototype-scoped definitions and there is no public scope annotation yet.
+`ScopeProvider.prototypeScope(...)` exists in `core`, but the current annotation processor does not generate prototype-scoped definitions and there is no public scope annotation yet.
 
 ### Injection Patterns
 
@@ -254,7 +254,7 @@ Implemented injection paths are:
 
 ### Configuration Model
 
-JET uses source annotations and generated metadata as configuration. During compilation, `jet-processor` generates one `BeanDefinition` implementation per discovered `@Jet` class and `@Part` method. It also writes:
+JET uses source annotations and generated metadata as configuration. During compilation, `processor` generates one `BeanDefinition` implementation per discovered `@Jet` class and `@Part` method. It also writes:
 
 ```text
 META-INF/services/io.github.mclavo.jet.context.BeanDefinition
@@ -278,7 +278,7 @@ The framework is split to keep responsibilities narrow:
 
 ```mermaid
 flowchart LR
-    A[Annotated Application Code] --> B[jet-processor]
+    A[Annotated Application Code] --> B[processor]
     B --> C[Generated BeanDefinition classes]
     B --> D[META-INF/services]
     D --> E[ServiceLoader]
@@ -287,8 +287,8 @@ flowchart LR
     F --> G[Resolved Beans]
 ```
 
-1. Application code declares beans with annotations from `jet-core`.
-2. `jet-processor` runs during compilation and generates simple Java classes implementing `BeanDefinition<T>`.
+1. Application code declares beans with annotations from `core`.
+2. `processor` runs during compilation and generates simple Java classes implementing `BeanDefinition<T>`.
 3. The processor writes ServiceLoader metadata for those generated definitions.
 4. `ControlTower.run(...)` creates a `JetContext`.
 5. `JetContext` loads definitions, registers them in `JetRegistry`, and resolves beans lazily.

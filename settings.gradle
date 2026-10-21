@@ -13,7 +13,7 @@ plugins {
 rootProject.name = "jet-di"
 
 include(
-    'jet-core',
-    'jet-processor',
-    'jet-example'
+    'core',
+    'processor',
+    'example'
 )

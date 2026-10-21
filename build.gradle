@@ -25,18 +25,25 @@ subprojects {
     }
 }
 
-configure(subprojects.findAll { it.name in ["jet-core", "jet-processor"] }) {
+configure(subprojects.findAll { it.name in ["core", "processor"] }) {
     apply plugin: "com.vanniktech.maven.publish"
 
     mavenPublishing {
+        coordinates(
+            project.group.toString(),
+            "jet-${project.name}",
+            project.version.toString()
+        )
+        
         publishToMavenCentral()
+
         if (providers.gradleProperty("signingInMemoryKey").isPresent()) {
             signAllPublications()
         }
 
         pom {
-            name = project.name
-            description = project.name == "jet-core"
+            name = "jet-${project.name}"
+            description = project.name == "core"
                     ? "Runtime API and core container for Jet DI."
                     : "Annotation processor for Jet DI."
             inceptionYear = "2026"

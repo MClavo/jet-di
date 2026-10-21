@@ -6,12 +6,15 @@
  */
 
 plugins {
-    id 'java-library'
+    id 'application'
 }
 
 dependencies {
-    implementation project(':jet-core')
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.14.4'
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    annotationProcessor project(':processor')
+    implementation project(':processor')
+    implementation project(':core')
+}
+
+application {
+    mainClass = 'io.github.mclavo.jet.example.App'
 }
