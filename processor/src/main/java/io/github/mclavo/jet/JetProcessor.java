@@ -43,7 +43,7 @@ import io.github.mclavo.jet.exception.DefinitionFactoryException;
     "io.github.mclavo.jet.annotation.Fuel",
     "io.github.mclavo.jet.annotation.Maverick"
 })
-@SupportedSourceVersion(SourceVersion.RELEASE_21)
+@SupportedSourceVersion(SourceVersion.RELEASE_25)
 public final class JetProcessor extends AbstractProcessor {
     private final Set<String> processedBeanDefinitions = new LinkedHashSet<>();
     private final SpecDefinitionFactory jetDefinitionFactory = new JetDefinitionFactory();

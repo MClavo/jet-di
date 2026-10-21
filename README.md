@@ -4,7 +4,7 @@
 
 **A compact Java dependency injection framework with a flight plan of its own.**
 
-![Java 21](https://img.shields.io/badge/Java-21-orange?style=flat-square)
+![Java 25](https://img.shields.io/badge/Java-25-orange?style=flat-square)
 ![Gradle 8.14.3](https://img.shields.io/badge/Gradle-8.14.3-02303A?style=flat-square&logo=gradle&logoColor=white)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.mclavo/jet-core?style=flat-square)](https://central.sonatype.com/artifact/io.github.mclavo/jet-core)
 [![Build and Test](https://github.com/mclavo/jet-di/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/mclavo/jet-di/actions/workflows/build-and-test.yml)
@@ -140,7 +140,7 @@ dependencies {
 
 ### Prerequisites
 
-- JDK 21
+- JDK 25
 - Gradle is provided through the wrapper (`./gradlew` or `gradlew.bat`)
 
 ### Build Everything
@@ -315,7 +315,7 @@ Non-goals remain equally important: JET DI does not aim to become a Spring repla
 
 ## Limitations
 
-- JET requires Java 21 in the current Gradle configuration.
+- JET requires Java 25 in the current Gradle configuration.
 - Generated definitions are singleton-scoped only.
 - There are no lifecycle callbacks, shutdown hooks, profiles, conditional beans, or external configuration binding.
 - Type resolution uses registered bean types; it does not automatically search assignable implementations for every interface or superclass.

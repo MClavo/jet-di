@@ -2,7 +2,7 @@
 
 ## Repo Shape
 
-- Gradle multi-project Java repo: `core`, `processor`, `example`; Java toolchain is 21.
+- Gradle multi-project Java repo: `core`, `processor`, `example`; Java toolchain is 25.
 - `core` owns public annotations/runtime (`io.github.mclavo.jet.annotation`, `io.github.mclavo.jet.context`, `io.github.mclavo.jet.exception`).
 - `processor` is the annotation processor; it is registered by `processor/src/main/resources/META-INF/services/javax.annotation.processing.Processor`.
 - `example` is the runnable integration sample; its entrypoint is `example.io.github.mclavo.jet.App` via the Gradle `application` plugin.
