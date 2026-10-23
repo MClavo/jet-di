@@ -91,8 +91,8 @@ JET is published on Maven Central.
 
 ```groovy
 dependencies {
-    implementation "io.github.mclavo:jet-core:0.4.0"
-    annotationProcessor "io.github.mclavo:jet-processor:0.4.0"
+    implementation "io.github.mclavo:jet-core:0.5.0"
+    annotationProcessor "io.github.mclavo:jet-processor:0.5.0"
 }
 ```
 
@@ -103,7 +103,7 @@ dependencies {
     <dependency>
         <groupId>io.github.mclavo</groupId>
         <artifactId>jet-core</artifactId>
-        <version>0.4.0</version>
+        <version>0.5.0</version>
     </dependency>
 </dependencies>
 
@@ -119,7 +119,7 @@ dependencies {
                     <path>
                         <groupId>io.github.mclavo</groupId>
                         <artifactId>jet-processor</artifactId>
-                        <version>0.4.0</version>
+                        <version>0.5.0</version>
                     </path>
                 </annotationProcessorPaths>
             </configuration>
@@ -241,6 +241,8 @@ Implemented injection paths are:
 - Constructor parameters on generated `@Hangar` beans.
 - Parameters on `@Part` factory methods.
 - Qualified parameters with `@Fuel(...)`.
+
+Selected constructors and `@Part` factory methods must not be private; package-access members are supported. Non-static inner classes cannot be beans because they require an enclosing instance. Declare nested beans `static` or use top-level classes. The processor reports these restrictions as compilation errors before generating their definitions.
 
 > [!NOTE]
 > Field injection is not supported by design. JET favors constructor injection with `@Intake` because it:

@@ -36,7 +36,9 @@ Annotation processor that generates runtime `BeanDefinition` classes consumed by
 
 ## Validation and diagnostics
 
-- `JetDefinitionFactory` enforces constructor selection: if a class has multiple constructors, exactly one must be annotated with `@Intake`.
+- `JetDefinitionAnalyzer` rejects non-static inner bean classes before constructor or dependency analysis, with a diagnostic suggesting a static nested or top-level class. Static nested beans remain supported.
+- `JetDefinitionAnalyzer` enforces constructor selection: if a class has multiple constructors, exactly one must be annotated with `@Intake`. The selected constructor must not be private; package-access constructors remain supported.
+- `PartDefinitionAnalyzer` rejects private `@Part` factory methods before dependency analysis or bytecode generation.
 - Invalid elements or generation constraints are reported as compiler errors (`DefinitionFactoryException` messages).
 - Re-generation conflicts from `Filer` are reported as warnings.
 - I/O failures while writing source or metadata are reported as compiler errors.

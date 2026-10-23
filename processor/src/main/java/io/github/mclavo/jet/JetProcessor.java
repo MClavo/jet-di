@@ -1,41 +1,59 @@
+
 package io.github.mclavo.jet;
 
 import java.io.IOException;
-import java.io.Writer;
-import java.util.LinkedHashSet;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.annotation.processing.AbstractProcessor;
-import javax.annotation.processing.Filer;
-import javax.annotation.processing.FilerException;
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.util.Elements;
-import javax.tools.Diagnostic;
+import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic.Kind;
-import javax.tools.FileObject;
-import javax.tools.JavaFileObject;
-import javax.tools.StandardLocation;
 
+import io.github.mclavo.jet.analysis.JetDefinitionAnalyzer;
+import io.github.mclavo.jet.analysis.PartDefinitionAnalyzer;
 import io.github.mclavo.jet.annotation.Hangar;
 import io.github.mclavo.jet.annotation.Jet;
 import io.github.mclavo.jet.annotation.Part;
-import io.github.mclavo.jet.exception.DefinitionFactoryException;
+import io.github.mclavo.jet.bytecode.DefinitionBytecodeGenerator;
+import io.github.mclavo.jet.model.BeanSpec;
+import io.github.mclavo.jet.output.ClassFileWriter;
+import io.github.mclavo.jet.output.ServiceMetadataWriter;
 
 /**
- * Annotation processor that generates {@code BeanDefinition} classes for:
+ * Annotation processor responsible for generating BeanDefinition
+ * implementations at compile time.
+ *
+ * <p>
+ * Processes:
  * <ul>
- *   <li>{@code @Jet} classes</li>
- *   <li>{@code @Part} methods declared inside {@code @Hangar} classes</li>
+ * <li>Classes annotated with {@code @Jet}</li>
+ * <li>Classes annotated with {@code @Hangar} containing {@code @Part}
+ * methods</li>
  * </ul>
- * It also generates the ServiceLoader file under {@code META-INF/services}.
+ *
+ * <p>
+ * Each bean is analyzed and translated directly into JVM bytecode
+ * using the Class-File API. Generated definitions are registered
+ * through ServiceLoader metadata.
  */
-@SupportedAnnotationTypes({ 
+@SupportedAnnotationTypes({
     "io.github.mclavo.jet.annotation.Jet",
     "io.github.mclavo.jet.annotation.Intake",
     "io.github.mclavo.jet.annotation.Hangar",
@@ -45,186 +63,348 @@ import io.github.mclavo.jet.exception.DefinitionFactoryException;
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_25)
 public final class JetProcessor extends AbstractProcessor {
-    private final Set<String> processedBeanDefinitions = new LinkedHashSet<>();
-    private final SpecDefinitionFactory jetDefinitionFactory = new JetDefinitionFactory();
-    private final SpecDefinitionFactory partDefinitionFactory = new PartDefinitionFactory();
+
+    private JetDefinitionAnalyzer jetAnalyzer;
+    private PartDefinitionAnalyzer partAnalyzer;
+    private DefinitionBytecodeGenerator generator;
+    private ClassFileWriter classFileWriter;
+    private ServiceMetadataWriter metadataWriter;
+
+    // Tracks generated class names and their originating elements.
+    // Also prevents duplicate generation across processing rounds.
+    private final Map<String, Element> generatedDefinitions = new LinkedHashMap<>();
+
+    private boolean generationFailed;
+    private boolean metadataWritten;
 
     /**
-     * Main annotation-processing round entrypoint.
+     * Initializes the annotation processor and its components.
      *
-     * @param annotations annotation types requested in this round
-     * @param roundEnv round environment with annotated elements
-     * @return {@code true} to claim supported annotations
+     * @param env annotation processing environment
      */
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        try {
-            processJet(roundEnv.getElementsAnnotatedWith(Jet.class));
-            processHangar(roundEnv.getElementsAnnotatedWith(Hangar.class));
+    public synchronized void init(ProcessingEnvironment env) {
+        super.init(env);
 
-            // Processors can run in multiple rounds, 
-            // but the ServiceLoader metadata should only be 
-            // generated once after all definitions are processed
-            if (roundEnv.processingOver() && !processedBeanDefinitions.isEmpty()) {
-                generateMetadata();
-            }
+        jetAnalyzer = new JetDefinitionAnalyzer();
+        partAnalyzer = new PartDefinitionAnalyzer();
 
-        } catch (Exception e) {
-            processingEnv.getMessager()
-                .printMessage(Kind.ERROR, "Exception occurred %s".formatted(e));
+        generator = new DefinitionBytecodeGenerator(env);
+        classFileWriter = new ClassFileWriter(env.getFiler());
+        metadataWriter = new ServiceMetadataWriter(env.getFiler());
+    }
+
+    /**
+     * Main annotation-processing entry point.
+     *
+     * <p>
+     * Bean definitions are generated during regular rounds.
+     * ServiceLoader metadata is written once, in the final round.
+     *
+     * @param annotations annotation types present in this round
+     * @param roundEnv    current annotation processing round
+     * @return {@code true} to claim the supported annotations
+     */
+    @Override
+    public boolean process(
+        Set<? extends TypeElement> annotations,
+        RoundEnvironment roundEnv
+    ) {
+        if (roundEnv.processingOver()) {
+            writeMetadata(roundEnv);
+            return true;
         }
+
+        if (generationFailed || roundEnv.errorRaised()) {
+            return true;
+        }
+
+        processJet(roundEnv.getElementsAnnotatedWith(Jet.class));
+        processHangar(roundEnv.getElementsAnnotatedWith(Hangar.class));
 
         return true;
     }
 
-
     /**
-     * Generates definitions for all classes annotated with {@code @Jet}.
+     * Generates definitions for classes annotated with {@code @Jet}.
      *
-     * @param annotatedElements elements annotated with {@code @Jet}
+     * @param elements annotated elements
      */
-    private void processJet(Set<? extends Element> annotatedElements) {
-        for (Element element : annotatedElements) {
-            generateJetDefinition(element);
+    private void processJet(Set<? extends Element> elements) {
+        for (Element element : elements) {
+            if (!(element instanceof TypeElement type)) {
+                reportError("@Jet must annotate a type", element);
+                continue;
+            }
+
+            if (!isInstantiableType(type)) {
+                reportError(
+                    "@Jet requires a non-abstract class or record",
+                    element
+                );
+                continue;
+            }
+
+            generateJetDefinition(type);
         }
     }
 
     /**
-     * Generates definitions for {@code @Hangar} classes and their {@code @Part} methods.
+     * Processes {@code @Hangar} classes and their {@code @Part} methods.
      *
-     * @param annotatedElements elements annotated with {@code @Hangar}
+     * <p>
+     * The hangar itself must be registered as a bean so that
+     * instance factory methods can be invoked through BeanProvider.
+     *
+     * @param elements annotated hangar elements
      */
-    private void processHangar(Set<? extends Element> annotatedElements) {
-        for (Element hangarElement : annotatedElements) {
-            // @Part methods are discovered from members of each @Hangar class.
-            List<? extends Element> partBeans = hangarElement.getEnclosedElements().stream()
-                .filter(e -> e.getAnnotation(Part.class) != null)
+    private void processHangar(Set<? extends Element> elements) {
+        for (Element element : elements) {
+            if (!(element instanceof TypeElement hangar)) {
+                reportError("@Hangar must annotate a type", element);
+                continue;
+            }
+
+            List<ExecutableElement> parts = ElementFilter.methodsIn(hangar.getEnclosedElements())
+                .stream()
+                .filter(method -> method.getAnnotation(Part.class) != null)
                 .toList();
 
-            if (partBeans.isEmpty()) {
-                continue; // No @Part methods, skip hangar definition generation.
+            if (parts.isEmpty()) {
+                continue;
             }
-            
-            // The hangar definition must exist so part definitions can request it via BeanProvider.
-            generateJetDefinition(hangarElement);
 
-            // Each @Part method is processed into a separate definition file.
-            for (Element element : partBeans) {
-                generatePartDefinition(element);
+            if (!isInstantiableType(hangar)) {
+                reportError(
+                    "@Hangar requires a non-abstract class or record",
+                    hangar
+                );
+                continue;
+            }
+
+            // Register the hangar before processing its factory methods.
+            // If it was also annotated with @Jet, generation is skipped.
+            generateJetDefinition(hangar);
+
+            for (ExecutableElement part : parts) {
+                generatePartDefinition(part);
             }
         }
     }
 
-
     /**
-     * Creates a class definition file for the given element.
+     * Analyzes a class and generates its BeanDefinition.
      *
-     * @param element the element for which to create a definition file
+     * @param element bean class
      */
-    private void generateJetDefinition(Element element) {
-        Elements elements = processingEnv.getElementUtils();
+    private void generateJetDefinition(TypeElement element) {
         try {
-            DefinitionSpec spec = jetDefinitionFactory.from(element, elements);
-            writeDefinitionFile(element, spec);
+            BeanSpec spec = jetAnalyzer.analyze(element);
 
-        } catch (DefinitionFactoryException e) {
-            processingEnv.getMessager().printMessage(
-                Diagnostic.Kind.ERROR,
-                e.getMessage(),
-                element
+            writeDefinition(
+                spec,
+                generatedNameForType(element)
             );
-        }
-
-    }
-
-    /**
-     * Creates a part definition file for the given element.
-     *
-     * @param element the element for which to create a definition file
-     */
-    private void generatePartDefinition(Element element) {
-        Elements elements = processingEnv.getElementUtils();
-        try {
-            DefinitionSpec spec = partDefinitionFactory.from(element, elements);
-            writeDefinitionFile(element, spec);
-
-        } catch (DefinitionFactoryException e) {
-            processingEnv.getMessager().printMessage(
-                Diagnostic.Kind.ERROR,
-                e.getMessage(),
+        } catch (IOException | RuntimeException e) {
+            reportError(
+                "Failed to generate definition for "
+                    + element.getQualifiedName() + ": " + e,
                 element
             );
         }
     }
 
-
     /**
-     * Writes a source file for the given definition spec, originating from the provided element.
+     * Analyzes a factory method and generates its BeanDefinition.
      *
-     * @param element source element that originated the definition
-     * @param spec definition metadata to render into a source file
+     * @param element method annotated with {@code @Part}
      */
-    private void writeDefinitionFile(Element element, DefinitionSpec spec){
-        Filer filer = processingEnv.getFiler();
-        String source = DefinitionSourceRenderer.render(spec);
-        String generatedFqcn = spec.getPackageName() + "." + spec.getSimpleClassName();
-
-
+    private void generatePartDefinition(ExecutableElement element) {
         try {
-            JavaFileObject sourceFile = filer.createSourceFile(generatedFqcn, element);
+            BeanSpec spec = partAnalyzer.analyze(element);
 
-            try (Writer writer = sourceFile.openWriter()) {
-                writer.write(source);
-                processedBeanDefinitions.add(generatedFqcn);
-            }
-
-        } catch (FilerException e) {
-            processingEnv.getMessager().printMessage(
-                Diagnostic.Kind.WARNING,
-                "Could not regenerate " + element + ": " + e.getMessage(),
+            writeDefinition(
+                spec,
+                generatedNameForPart(element)
+            );
+        } catch (IOException | RuntimeException e) {
+            reportError(
+                "Failed to generate definition for "
+                    + element + ": " + e,
                 element
             );
+        }
+    }
 
+    /**
+     * Generates and writes a BeanDefinition class.
+     *
+     * <p>
+     * Each binary class name may be generated only once.
+     * Repeated processing of the same originating element is ignored,
+     * while collisions between different elements are rejected.
+     *
+     * @param spec      analyzed bean metadata
+     * @param className binary name of the generated class
+     * @throws IOException if the class file cannot be written
+     */
+    private void writeDefinition(
+        BeanSpec spec,
+        String className
+    ) throws IOException {
+
+        Element previous = generatedDefinitions.get(className);
+
+        if (previous != null) {
+            if (previous.equals(spec.origin())) {
+                return;
+            }
+
+            throw new IllegalStateException(
+                "Generated class name collision: " + className
+            );
+        }
+
+        byte[] bytecode = generator.generate(spec, className);
+
+        classFileWriter.write(
+            className,
+            bytecode,
+            spec.origin()
+        );
+
+        // Register only successfully written definitions.
+        generatedDefinitions.put(className, spec.origin());
+    }
+
+    /**
+     * Writes ServiceLoader metadata after all processing rounds.
+     *
+     * <p>
+     * Metadata is not generated if compilation errors occurred,
+     * preventing registration of incomplete definitions.
+     *
+     * @param roundEnv final processing round
+     */
+    private void writeMetadata(RoundEnvironment roundEnv) {
+        if (metadataWritten
+            || generationFailed
+            || roundEnv.errorRaised()) {
+            return;
+        }
+
+        try {
+            metadataWriter.write(generatedDefinitions.keySet());
+            metadataWritten = true;
         } catch (IOException e) {
-            processingEnv.getMessager().printMessage(
-                Diagnostic.Kind.ERROR,
-                "Error generating definition for " + element + ": " + e.getMessage(),
-                element
+            reportError(
+                "Failed to generate ServiceLoader metadata: " + e,
+                null
             );
-
         }
     }
 
+    /**
+     * Returns the binary name for a generated class definition.
+     *
+     * <p>
+     * Uses the original binary name, supporting nested classes
+     * without collisions between identically named inner types.
+     *
+     * @param type original bean type
+     * @return generated class binary name
+     */
+    private String generatedNameForType(TypeElement type) {
+        return processingEnv.getElementUtils()
+            .getBinaryName(type) + "$JetDefinition";
+    }
 
     /**
-     * Writes the ServiceLoader metadata listing generated definition classes.
+     * Returns a deterministic binary name for a factory method definition.
+     *
+     * <p>
+     * A signature hash distinguishes overloaded methods.
+     * Qualifiers and return types are included in the signature.
+     *
+     * @param method factory method
+     * @return generated class binary name
      */
-    private void generateMetadata() {
+    private String generatedNameForPart(ExecutableElement method) {
+        TypeElement owner = (TypeElement) method.getEnclosingElement();
+
+        String ownerName = processingEnv.getElementUtils()
+            .getBinaryName(owner).toString();
+
+        String parameters = method.getParameters().stream()
+            .map(
+                param -> processingEnv.getTypeUtils()
+                    .erasure(param.asType()).toString()
+            )
+            .collect(Collectors.joining(","));
+
+        String signature = method.getSimpleName() + "(" + parameters + ")"
+            + processingEnv.getTypeUtils()
+                .erasure(method.getReturnType())
+            + ":" + method.getAnnotation(
+                io.github.mclavo.jet.annotation.Fuel.class
+            );
+
+        return ownerName
+            + "$Part$"
+            + method.getSimpleName()
+            + "$"
+            + signatureHash(signature)
+            + "$JetDefinition";
+    }
+
+    /**
+     * Creates a stable hexadecimal hash used in generated class names.
+     *
+     * @param value method signature
+     * @return shortened SHA-256 hash
+     */
+    private String signatureHash(String value) {
         try {
-            FileObject resource = processingEnv.getFiler().createResource(
-                StandardLocation.CLASS_OUTPUT,
-                "",
-                "META-INF/services/io.github.mclavo.jet.context.BeanDefinition"
+            byte[] hash = MessageDigest.getInstance("SHA-256")
+                .digest(value.getBytes(StandardCharsets.UTF_8));
 
+            return HexFormat.of().formatHex(hash, 0, 12);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(
+                "SHA-256 is not available", e
             );
-            
-            try (Writer writer = resource.openWriter()) {
-                for(String definition : processedBeanDefinitions) {
-                    writer.write(definition);
-                    writer.write("\n");
-                }
-            }
+        }
+    }
 
-        } catch (FilerException e) {
+    /**
+     * Checks whether a type can be instantiated by the current
+     * definition generator.
+     *
+     * @param type bean or hangar type
+     * @return whether the type is a non-abstract class or record
+     */
+    private boolean isInstantiableType(TypeElement type) {
+        return (type.getKind() == ElementKind.CLASS
+            || type.getKind() == ElementKind.RECORD)
+            && !type.getModifiers().contains(Modifier.ABSTRACT);
+    }
+
+    /**
+     * Reports a compilation error associated with a source element.
+     *
+     * @param message diagnostic message
+     * @param element originating element, or null for global errors
+     */
+    private void reportError(String message, Element element) {
+        generationFailed = true;
+
+        if (element == null) {
             processingEnv.getMessager().printMessage(
-                Diagnostic.Kind.WARNING,
-                "Could not regenerate ServiceLoader metadata: " + e.getMessage()
+                Kind.ERROR, message
             );
-
-        } catch (IOException e) {
+        } else {
             processingEnv.getMessager().printMessage(
-                Diagnostic.Kind.ERROR,
-                "Error generating ServiceLoader metadata: " + e.getMessage()
+                Kind.ERROR, message, element
             );
         }
     }
