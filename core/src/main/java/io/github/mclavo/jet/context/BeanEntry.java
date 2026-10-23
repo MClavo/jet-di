@@ -8,7 +8,7 @@ package io.github.mclavo.jet.context;
  * <ul>
  *   <li>The {@link BeanDefinition} describing the bean's type, creation strategy, and configuration.</li>
  *   <li>An optional {@link Qualifier} for distinguishing between multiple candidates of the same type.</li>
- *   <li>The current bean instance, if it has been instantiated (may be {@code null} for lazy or prototype beans).</li>
+ *   <li>The singleton instance, or {@code null} before lazy initialization by {@link JetContext}.</li>
  * </ul>
  * <p>
  * Responsibilities:
@@ -23,8 +23,7 @@ package io.github.mclavo.jet.context;
 final class BeanEntry<T> {
     private final BeanDefinition<T> definition;
     
-    // Scope ?
-    private volatile T instance; // nullable for lazy singletons or prototypes
+    private volatile T instance;
 
     BeanEntry(BeanDefinition<T> definition) {
         this.definition = definition;

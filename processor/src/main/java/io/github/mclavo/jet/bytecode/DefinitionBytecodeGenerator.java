@@ -4,15 +4,7 @@ import java.lang.classfile.ClassBuilder;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.CodeBuilder;
 import java.lang.constant.ClassDesc;
-import java.lang.constant.DirectMethodHandleDesc;
-import java.lang.constant.DynamicCallSiteDesc;
-import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
-import java.lang.invoke.CallSite;
-import java.lang.invoke.LambdaMetafactory;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodType;
-import java.util.function.Function;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
@@ -21,14 +13,12 @@ import javax.lang.model.element.Modifier;
 import io.github.mclavo.jet.context.BeanDefinition;
 import io.github.mclavo.jet.context.BeanProvider;
 import io.github.mclavo.jet.context.Qualifier;
-import io.github.mclavo.jet.context.ScopeProvider;
 import io.github.mclavo.jet.model.BeanSpec;
 import io.github.mclavo.jet.model.CreationSpec;
 import io.github.mclavo.jet.model.DependencySpec;
 
 import static java.lang.classfile.ClassFile.*;
 import static java.lang.constant.ConstantDescs.*;
-import static java.lang.constant.DirectMethodHandleDesc.Kind.*;
 
 public final class DefinitionBytecodeGenerator {
 
@@ -41,33 +31,8 @@ public final class DefinitionBytecodeGenerator {
     private static final ClassDesc QUALIFIER =
         ClassDesc.of(Qualifier.class.getName());
 
-    private static final ClassDesc SCOPE =
-        ClassDesc.of(ScopeProvider.class.getName());
-
-    private static final ClassDesc FUNCTION =
-        ClassDesc.of(Function.class.getName());
-
     private static final MethodTypeDesc CREATE_TYPE =
         MethodTypeDesc.of(CD_Object, PROVIDER);
-
-    private static final MethodTypeDesc FUNCTION_APPLY =
-        MethodTypeDesc.of(CD_Object, CD_Object);
-
-    private static final DirectMethodHandleDesc LAMBDA_METAFACTORY =
-        MethodHandleDesc.ofMethod(
-            STATIC,
-            ClassDesc.of(LambdaMetafactory.class.getName()),
-            "metafactory",
-            MethodTypeDesc.of(
-                ClassDesc.of(CallSite.class.getName()),
-                ClassDesc.of("java.lang.invoke.MethodHandles$Lookup"),
-                CD_String,
-                ClassDesc.of(MethodType.class.getName()),
-                ClassDesc.of(MethodType.class.getName()),
-                ClassDesc.of(MethodHandle.class.getName()),
-                ClassDesc.of(MethodType.class.getName())
-            )
-        );
 
     private final TypeDescriptors descriptors;
     private final DependencyEmitter dependencies;
@@ -92,25 +57,15 @@ public final class DefinitionBytecodeGenerator {
             cb.withSuperclass(CD_Object);
             cb.withInterfaceSymbols(DEFINITION);
 
-            cb.withField(
-                "scope",
-                SCOPE,
-                ACC_PRIVATE | ACC_FINAL
-            );
-
-            emitDefaultConstructor(cb, generated);
+            emitDefaultConstructor(cb);
             emitType(cb, beanType);
             emitQualifier(cb, spec);
             emitPrimary(cb, spec);
-            emitApply(cb, generated);
-            emitCreation(cb, spec);
+            emitApply(cb, spec);
         });
     }
 
-    private void emitDefaultConstructor(
-        ClassBuilder cb,
-        ClassDesc generated
-    ) {
+    private void emitDefaultConstructor(ClassBuilder cb) {
         cb.withMethodBody(
             "<init>",
             MethodTypeDesc.of(CD_void),
@@ -121,35 +76,7 @@ public final class DefinitionBytecodeGenerator {
                         CD_Object,
                         "<init>",
                         MethodTypeDesc.of(CD_void)
-                    );
-
-                // this.scope = ScopeProvider.singletonScope(
-                //     this::createBean
-                // );
-                code.aload(0)
-                    .aload(0)
-                    .invokedynamic(
-                        DynamicCallSiteDesc.of(
-                            LAMBDA_METAFACTORY,
-                            "apply",
-                            MethodTypeDesc.of(FUNCTION, generated),
-                            FUNCTION_APPLY,
-                            MethodHandleDesc.ofMethod(
-                                VIRTUAL,
-                                generated,
-                                "createBean",
-                                CREATE_TYPE
-                            ),
-                            CREATE_TYPE
-                        )
                     )
-                    .invokestatic(
-                        SCOPE,
-                        "singletonScope",
-                        MethodTypeDesc.of(SCOPE, FUNCTION),
-                        true
-                    )
-                    .putfield(generated, "scope", SCOPE)
                     .return_();
             }
         );
@@ -209,32 +136,11 @@ public final class DefinitionBytecodeGenerator {
         );
     }
 
-    private void emitApply(
-        ClassBuilder cb,
-        ClassDesc generated
-    ) {
+    private void emitApply(ClassBuilder cb, BeanSpec spec) {
         cb.withMethodBody(
             "apply",
             CREATE_TYPE,
             ACC_PUBLIC,
-            code -> code
-                .aload(0)
-                .getfield(generated, "scope", SCOPE)
-                .aload(1)
-                .invokeinterface(
-                    SCOPE,
-                    "apply",
-                    FUNCTION_APPLY
-                )
-                .areturn()
-        );
-    }
-
-    private void emitCreation(ClassBuilder cb, BeanSpec spec) {
-        cb.withMethodBody(
-            "createBean",
-            CREATE_TYPE,
-            ACC_PRIVATE | ACC_SYNTHETIC,
             code -> {
                 switch (spec.creation()) {
                     case CreationSpec.Constructor c ->

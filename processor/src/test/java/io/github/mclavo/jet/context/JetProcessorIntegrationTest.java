@@ -3,6 +3,7 @@ package io.github.mclavo.jet.context;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -145,6 +146,18 @@ class JetProcessorIntegrationTest {
             Class<?> senderType = classLoader.loadClass("org.acme.app.Application$Sender");
             assertEquals("email", invokeString(context.provide(senderType, "email"), "name"));
             assertEquals("slack", invokeString(context.provide(senderType), "name"));
+
+            // Constructor and instance @Part definitions create on every call;
+            // only context resolution caches the resulting singleton.
+            for (BeanDefinition<?> definition : ServiceLoader.load(BeanDefinition.class, classLoader)) {
+                Object first = definition.apply(context);
+                Object second = definition.apply(context);
+                Object singleton = context.provide(definition.type(), definition.qualifier());
+
+                assertNotSame(first, second, definition.getClass().getName());
+                assertNotSame(first, singleton);
+                assertSame(singleton, context.provide(definition.type(), definition.qualifier()));
+            }
         });
     }
 
@@ -264,13 +277,17 @@ class JetProcessorIntegrationTest {
                 .findFirst()
                 .orElseThrow();
 
-            // Call the definition directly so the context cache cannot hide a broken scope.
+            // Static @Part definitions also leave singleton caching to the context.
             Object first = definition.apply(context);
             Object second = definition.apply(context);
 
             assertEquals(StringBuilder.class, first.getClass());
             assertEquals("ready", first.toString());
-            assertSame(first, second);
+            assertNotSame(first, second);
+            StringBuilder singleton = context.provide(StringBuilder.class);
+            assertEquals("ready", singleton.toString());
+            assertNotSame(first, singleton);
+            assertSame(singleton, context.provide(StringBuilder.class));
         });
     }
 

@@ -228,9 +228,9 @@ Generated definitions register the exact type they represent. For `@Jet` classes
 
 ### Lifecycle And Scoping
 
-Generated beans are lazy singletons. A bean is created on first resolution, then reused for later requests. The generated definition uses `ScopeProvider.singletonScope(...)`, and `JetContext` also stores the initialized instance in the registry.
+Beans resolved through `JetContext` are lazy singletons. On first resolution, `JetContext.resolve()` calls the generated `BeanDefinition.apply(...)` and stores the instance in its registry's `BeanEntry`. Later requests reuse that instance. Singleton initialization remains synchronized on the entry, and the context's thread-local resolution stack detects circular dependencies.
 
-`ScopeProvider.prototypeScope(...)` exists in `core`, but the current annotation processor does not generate prototype-scoped definitions and there is no public scope annotation yet.
+Generated definitions only construct beans: each direct call to `BeanDefinition.apply(...)` invokes the constructor or `@Part` factory method again, resolving dependencies through the supplied `BeanProvider`. Definitions do not cache instances; singleton lifecycle management belongs to `JetContext`.
 
 ### Injection Patterns
 
@@ -308,7 +308,7 @@ The naming is intentionally distinctive. It helps the project feel like its own 
 JET DI is intentionally small, but several areas are good candidates for future versions:
 
 - Evaluate migrating to Java 25 to use Java's Class-File API for direct `.class` generation.
-- Prototype-scoped beans through a public scope annotation and generated `prototypeScope(...)` definitions.
+- Prototype-scoped beans through a public scope annotation.
 - Stronger annotation processor tests using compile-time testing fixtures.
 - Better assignable-type resolution for interfaces and supertypes, while keeping ambiguity rules explicit.
 - Primary candidate support for `@Jet` classes, not only `@Part` factory methods.
@@ -318,7 +318,7 @@ Non-goals remain equally important: JET DI does not aim to become a Spring repla
 ## Limitations
 
 - JET requires Java 25 in the current Gradle configuration.
-- Generated definitions are singleton-scoped only.
+- `JetContext` supports singleton beans only.
 - There are no lifecycle callbacks, shutdown hooks, profiles, conditional beans, or external configuration binding.
 - Type resolution uses registered bean types; it does not automatically search assignable implementations for every interface or superclass.
 - `@Maverick` currently applies to `@Part` methods, not `@Jet` classes.

@@ -6,24 +6,24 @@ Annotation processor that generates runtime `BeanDefinition` classes consumed by
 
 - Processes `@Jet` classes and generates one definition class per type.
 - Processes `@Hangar` classes and generates definitions for each enclosed `@Part` method.
-- Generates Java source under `<source-package>.generated`.
+- Generates `.class` files in the bean's package using the Java 25 Class-File API.
 - Emits `META-INF/services/io.github.mclavo.jet.context.BeanDefinition` in class output so runtime can load definitions through `ServiceLoader`.
 - Registers itself as a Java processor via `META-INF/services/javax.annotation.processing.Processor`.
 
 ## Main classes
 
 - `JetProcessor`: round coordinator; dispatches `@Jet` and `@Hangar` processing and writes service metadata when processing ends.
-- `JetDefinitionFactory`: builds `DefinitionSpec` for class beans and validates constructor injection rules.
-- `PartDefinitionFactory`: builds `DefinitionSpec` for `@Part` method beans, including qualifier and primary flags.
-- `DefinitionSourceRenderer`: renders final `BeanDefinition` source code (singleton-scoped provider + metadata methods).
-- `DefinitionUtils`: shared naming/import/provider-call helpers used by both factories.
+- `JetDefinitionAnalyzer`: builds `BeanSpec` for class beans and validates constructor injection rules.
+- `PartDefinitionAnalyzer`: builds `BeanSpec` for `@Part` method beans, including qualifier and primary flags.
+- `DefinitionBytecodeGenerator`: emits `BeanDefinition` bytecode with metadata methods and direct construction in `apply(...)`.
+- `DependencyEmitter`: emits dependency resolution calls through `BeanProvider`.
 
 ## Generation flow
 
 1. `JetProcessor.process(...)` gathers elements for `@Jet` and `@Hangar`.
 2. For each `@Hangar`, it first generates a definition for the hangar class itself, then one definition per `@Part` method.
-3. Factories produce `DefinitionSpec` values with bean type, qualifier expression, primary flag, and creation expression.
-4. `DefinitionSourceRenderer` converts each spec into Java source and `Filer` writes the class.
+3. Analyzers produce `BeanSpec` values with bean type, qualifier, primary flag, and constructor or factory creation metadata.
+4. `DefinitionBytecodeGenerator` converts each spec into bytecode and `ClassFileWriter` writes the class through `Filer`. Each `apply(...)` invocation calls the constructor or `@Part` factory directly, resolving dependencies through the supplied `BeanProvider`.
 5. On the final round (`processingOver()`), all generated definition FQCNs are written to ServiceLoader metadata.
 
 ## Resolution metadata rules
@@ -32,7 +32,7 @@ Annotation processor that generates runtime `BeanDefinition` classes consumed by
 - `@Fuel` on constructor or method parameters produces qualified `beanProvider.provide(...)` calls.
 - `@Maverick` marks `@Part` definitions as primary.
 - `@Jet` class definitions are always generated with `primary(false)`.
-- Generated definitions currently use `ScopeProvider.singletonScope(...)`.
+- Generated definitions do not cache instances. `JetContext.resolve()` owns singleton lifecycle management, storing instances in `BeanEntry` under its existing entry lock.
 
 ## Validation and diagnostics
 

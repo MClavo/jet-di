@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 import io.github.mclavo.jet.exception.CircularDependencyException;
@@ -17,8 +19,8 @@ class JetContextTest {
         // given
         JetContext context = new JetContext();
         JetRegistry registry = extractRegistry(context);
-        registry.register(new TestDefinition<>("hello", String.class, Qualifier.of("en"), false));
-        registry.register(new TestDefinition<>("hola", String.class, Qualifier.of("es"), false));
+        registry.register(new TestDefinition<>(() -> "hello", String.class, Qualifier.of("en"), false));
+        registry.register(new TestDefinition<>(() -> "hola", String.class, Qualifier.of("es"), false));
 
         // when
         String english = context.provide(String.class, Qualifier.of("en"));
@@ -53,7 +55,11 @@ class JetContextTest {
         // given
         JetContext context = new JetContext();
         JetRegistry registry = extractRegistry(context);
-        registry.register(new TestDefinition<>(new SingletonBean(), SingletonBean.class, null, true));
+        AtomicInteger creations = new AtomicInteger();
+        registry.register(new TestDefinition<>(() -> {
+            creations.incrementAndGet();
+            return new SingletonBean();
+        }, SingletonBean.class, Qualifier.none(), true));
 
         // when
         SingletonBean first = context.provide(SingletonBean.class);
@@ -61,6 +67,7 @@ class JetContextTest {
 
         // then
         assertSame(first, second);
+        assertEquals(1, creations.get());
     }
 
     private JetRegistry extractRegistry(JetContext context) throws Exception {
@@ -123,14 +130,14 @@ class JetContextTest {
     }
 
      private static final class TestDefinition<T> implements BeanDefinition<T> {
-        private final T value;
+        private final Supplier<T> factory;
         private final Class<T> type;
         private final Qualifier qualifier;
         private final boolean primary;
 
 
-        private TestDefinition(T value, Class<T> type, Qualifier qualifier, boolean isPrimary) {
-            this.value = value;
+        private TestDefinition(Supplier<T> factory, Class<T> type, Qualifier qualifier, boolean isPrimary) {
+            this.factory = factory;
             this.type = type;
             this.qualifier = qualifier;
             this.primary = isPrimary;
@@ -138,7 +145,7 @@ class JetContextTest {
 
         @Override
         public T apply(BeanProvider beanProvider) {
-            return value;
+            return factory.get();
         }
 
         @Override

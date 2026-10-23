@@ -27,7 +27,6 @@ public class JetContext implements BeanProvider {
         this.registry = new JetRegistry();
 
         loadBeanDefinitions(Thread.currentThread().getContextClassLoader());
-
     }
 
     @Override

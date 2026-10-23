@@ -23,10 +23,11 @@ public interface BeanDefinition<T> {
     boolean primary();
 
     /**
-     * Builds or resolves the bean instance.
+     * Creates a bean instance, resolving dependencies through the supplied provider.
+     * Singleton caching is managed by {@link JetContext}, not by generated definitions.
      *
      * @param beanProvider provider used to resolve dependencies
-     * @return resolved bean instance
+     * @return created bean instance
      */
     T apply(BeanProvider beanProvider);
 }
