@@ -4,7 +4,7 @@ Core runtime and public API for JET dependency resolution.
 
 ## Responsibilities
 
-- Defines public annotations used by application code and the annotation processor (`@Jet`, `@Hangar`, `@Part`, `@Intake`, `@Fuel`, `@Maverick`).
+- Defines `@Factory`, `@Bean`, and `@Primary`, and exposes Jakarta Inject for `@Singleton`, `@Inject`, and `@Named`.
 - Provides runtime resolution contracts (`BeanDefinition`, `BeanProvider`, `Qualifier`).
 - Loads generated bean definitions with `ServiceLoader` and keeps them in an in-memory registry.
 - Resolves dependencies with qualifier + primary rules and guards against circular dependencies.
@@ -28,5 +28,5 @@ Core runtime and public API for JET dependency resolution.
 
 - Resolution is based on exact registered type; interface/supertype fallback is not added automatically.
 - If no qualifier is requested and only one candidate exists, that candidate is returned even when it has a qualifier.
-- `@Intake` supports constructor selection in generated definitions; field injection is not implemented in runtime.
+- `@Inject` supports constructor selection in generated definitions; field and method injection are not implemented in runtime.
 - Generated definitions construct beans on every direct `apply(...)` call; only `JetContext` manages singleton caching and lifecycle.

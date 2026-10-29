@@ -1,18 +1,18 @@
 package io.github.mclavo.jet.example.notification;
 
-import io.github.mclavo.jet.annotation.Fuel;
-import io.github.mclavo.jet.annotation.Intake;
-import io.github.mclavo.jet.annotation.Jet;
+import jakarta.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import io.github.mclavo.jet.example.notification.formatter.MessageFormatter;
 import io.github.mclavo.jet.example.notification.sender.NotificationSender;
 
-@Jet
+@Singleton
 public final class AlertService {
     private final NotificationSender sender;
     private final MessageFormatter formatter;
 
-    @Intake
-    public AlertService(@Fuel("slack") NotificationSender sender, MessageFormatter formatter) {
+    @Inject
+    public AlertService(@Named("slack") NotificationSender sender, MessageFormatter formatter) {
         this.sender = sender;
         this.formatter = formatter;
     }

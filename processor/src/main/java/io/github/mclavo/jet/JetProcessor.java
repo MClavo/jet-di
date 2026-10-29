@@ -26,15 +26,16 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic.Kind;
 
-import io.github.mclavo.jet.analysis.JetDefinitionAnalyzer;
-import io.github.mclavo.jet.analysis.PartDefinitionAnalyzer;
-import io.github.mclavo.jet.annotation.Hangar;
-import io.github.mclavo.jet.annotation.Jet;
-import io.github.mclavo.jet.annotation.Part;
+import io.github.mclavo.jet.analysis.FactoryDefinitionAnalyzer;
+import io.github.mclavo.jet.analysis.SingletonDefinitionAnalyzer;
+import io.github.mclavo.jet.annotation.Bean;
+import io.github.mclavo.jet.annotation.Factory;
 import io.github.mclavo.jet.bytecode.DefinitionBytecodeGenerator;
 import io.github.mclavo.jet.model.BeanSpec;
 import io.github.mclavo.jet.output.ClassFileWriter;
 import io.github.mclavo.jet.output.ServiceMetadataWriter;
+import jakarta.inject.Named;
+import jakarta.inject.Singleton;
 
 /**
  * Annotation processor responsible for generating BeanDefinition
@@ -43,8 +44,8 @@ import io.github.mclavo.jet.output.ServiceMetadataWriter;
  * <p>
  * Processes:
  * <ul>
- * <li>Classes annotated with {@code @Jet}</li>
- * <li>Classes annotated with {@code @Hangar} containing {@code @Part}
+ * <li>Classes annotated with {@code @Singleton}</li>
+ * <li>Classes annotated with {@code @Factory} containing {@code @Bean}
  * methods</li>
  * </ul>
  *
@@ -54,18 +55,17 @@ import io.github.mclavo.jet.output.ServiceMetadataWriter;
  * through ServiceLoader metadata.
  */
 @SupportedAnnotationTypes({
-    "io.github.mclavo.jet.annotation.Jet",
-    "io.github.mclavo.jet.annotation.Intake",
-    "io.github.mclavo.jet.annotation.Hangar",
-    "io.github.mclavo.jet.annotation.Part",
-    "io.github.mclavo.jet.annotation.Fuel",
-    "io.github.mclavo.jet.annotation.Maverick"
+    "jakarta.inject.Singleton",
+    "jakarta.inject.Named",
+    "io.github.mclavo.jet.annotation.Factory",
+    "io.github.mclavo.jet.annotation.Bean",
+    "io.github.mclavo.jet.annotation.Primary"
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_25)
 public final class JetProcessor extends AbstractProcessor {
 
-    private JetDefinitionAnalyzer jetAnalyzer;
-    private PartDefinitionAnalyzer partAnalyzer;
+    private SingletonDefinitionAnalyzer singletonAnalyzer;
+    private FactoryDefinitionAnalyzer factoryAnalyzer;
     private DefinitionBytecodeGenerator generator;
     private ClassFileWriter classFileWriter;
     private ServiceMetadataWriter metadataWriter;
@@ -86,8 +86,8 @@ public final class JetProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment env) {
         super.init(env);
 
-        jetAnalyzer = new JetDefinitionAnalyzer();
-        partAnalyzer = new PartDefinitionAnalyzer();
+        singletonAnalyzer = new SingletonDefinitionAnalyzer();
+        factoryAnalyzer = new FactoryDefinitionAnalyzer();
 
         generator = new DefinitionBytecodeGenerator(env);
         classFileWriter = new ClassFileWriter(env.getFiler());
@@ -119,75 +119,79 @@ public final class JetProcessor extends AbstractProcessor {
             return true;
         }
 
-        processJet(roundEnv.getElementsAnnotatedWith(Jet.class));
-        processHangar(roundEnv.getElementsAnnotatedWith(Hangar.class));
+        processSingleton(roundEnv.getElementsAnnotatedWith(Singleton.class));
+        processFactory(roundEnv.getElementsAnnotatedWith(Factory.class));
 
         return true;
     }
 
     /**
-     * Generates definitions for classes annotated with {@code @Jet}.
+     * Generates definitions for classes annotated with {@code @Singleton}.
      *
      * @param elements annotated elements
      */
-    private void processJet(Set<? extends Element> elements) {
+    private void processSingleton(Set<? extends Element> elements) {
         for (Element element : elements) {
+            if (element.getKind() == ElementKind.METHOD) {
+                continue; // Factory methods are processed with their enclosing factory.
+            }
             if (!(element instanceof TypeElement type)) {
-                reportError("@Jet must annotate a type", element);
+                reportError("@Singleton must annotate a type", element);
                 continue;
             }
 
             if (!isInstantiableType(type)) {
                 reportError(
-                    "@Jet requires a non-abstract class or record",
+                    "@Singleton requires a non-abstract class or record",
                     element
                 );
                 continue;
             }
 
-            generateJetDefinition(type);
+            generateSingletonDefinition(type);
         }
     }
 
     /**
-     * Processes {@code @Hangar} classes and their {@code @Part} methods.
+     * Processes {@code @Factory} classes and their {@code @Bean} or {@code @Singleton} methods.
      *
      * <p>
-     * The hangar itself must be registered as a bean so that
+     * The factory itself must be registered as a bean so that
      * instance factory methods can be invoked through BeanProvider.
      *
-     * @param elements annotated hangar elements
+     * @param elements annotated factory elements
      */
-    private void processHangar(Set<? extends Element> elements) {
+    private void processFactory(Set<? extends Element> elements) {
         for (Element element : elements) {
-            if (!(element instanceof TypeElement hangar)) {
-                reportError("@Hangar must annotate a type", element);
+            if (!(element instanceof TypeElement factory)) {
+                reportError("@Factory must annotate a type", element);
                 continue;
             }
 
-            List<ExecutableElement> parts = ElementFilter.methodsIn(hangar.getEnclosedElements())
+            List<ExecutableElement> beans = ElementFilter.methodsIn(factory.getEnclosedElements())
                 .stream()
-                .filter(method -> method.getAnnotation(Part.class) != null)
+                .filter(method -> method.getAnnotation(Bean.class) != null
+                    || method.getAnnotation(Singleton.class) != null)
                 .toList();
 
-            if (parts.isEmpty()) {
+            if (beans.isEmpty()) {
                 continue;
             }
 
-            if (!isInstantiableType(hangar)) {
+            if (!isInstantiableType(factory)) {
                 reportError(
-                    "@Hangar requires a non-abstract class or record",
-                    hangar
+                    "@Factory requires a non-abstract class or record",
+                    factory
                 );
                 continue;
             }
 
-            // Register the hangar before processing its factory methods.
-            // If it was also annotated with @Jet, generation is skipped.
-            generateJetDefinition(hangar);
+            // Register the factory before processing its factory methods.
+            // If it was also annotated with @Singleton, generation is skipped.
+            generateSingletonDefinition(factory);
 
-            for (ExecutableElement part : parts) {
-                generatePartDefinition(part);
+            for (ExecutableElement bean : beans) {
+                generateBeanDefinition(bean);
             }
         }
     }
@@ -197,9 +201,9 @@ public final class JetProcessor extends AbstractProcessor {
      *
      * @param element bean class
      */
-    private void generateJetDefinition(TypeElement element) {
+    private void generateSingletonDefinition(TypeElement element) {
         try {
-            BeanSpec spec = jetAnalyzer.analyze(element);
+            BeanSpec spec = singletonAnalyzer.analyze(element);
 
             writeDefinition(
                 spec,
@@ -217,15 +221,15 @@ public final class JetProcessor extends AbstractProcessor {
     /**
      * Analyzes a factory method and generates its BeanDefinition.
      *
-     * @param element method annotated with {@code @Part}
+     * @param element method annotated with {@code @Bean}
      */
-    private void generatePartDefinition(ExecutableElement element) {
+    private void generateBeanDefinition(ExecutableElement element) {
         try {
-            BeanSpec spec = partAnalyzer.analyze(element);
+            BeanSpec spec = factoryAnalyzer.analyze(element);
 
             writeDefinition(
                 spec,
-                generatedNameForPart(element)
+                generatedNameForBean(element)
             );
         } catch (IOException | RuntimeException e) {
             reportError(
@@ -329,7 +333,7 @@ public final class JetProcessor extends AbstractProcessor {
      * @param method factory method
      * @return generated class binary name
      */
-    private String generatedNameForPart(ExecutableElement method) {
+    private String generatedNameForBean(ExecutableElement method) {
         TypeElement owner = (TypeElement) method.getEnclosingElement();
 
         String ownerName = processingEnv.getElementUtils()
@@ -346,11 +350,11 @@ public final class JetProcessor extends AbstractProcessor {
             + processingEnv.getTypeUtils()
                 .erasure(method.getReturnType())
             + ":" + method.getAnnotation(
-                io.github.mclavo.jet.annotation.Fuel.class
+                Named.class
             );
 
         return ownerName
-            + "$Part$"
+            + "$Bean$"
             + method.getSimpleName()
             + "$"
             + signatureHash(signature)
@@ -380,7 +384,7 @@ public final class JetProcessor extends AbstractProcessor {
      * Checks whether a type can be instantiated by the current
      * definition generator.
      *
-     * @param type bean or hangar type
+     * @param type bean or factory type
      * @return whether the type is a non-abstract class or record
      */
     private boolean isInstantiableType(TypeElement type) {

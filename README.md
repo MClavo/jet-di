@@ -19,7 +19,7 @@
 
 JET is a small annotation-driven dependency injection framework built in Java. It uses compile-time annotation processing to generate bean definitions, then loads those definitions at runtime with Java's `ServiceLoader`. The result is intentionally simple: no XML, no runtime classpath scanning, and no large framework lifecycle to learn.
 
-The project is also deliberately a little more memorable than another `@Inject` / `@Singleton` clone. Classes can be marked as `@Jet`, factory classes live in a `@Hangar`, factory methods produce `@Part`s, dependencies enter through an `@Intake`, qualifiers are called `@Fuel`, and a preferred candidate is `@Maverick`. The naming is playful; the mechanics are still serious.
+JET uses `@Singleton`, `@Inject`, and `@Named` from Jakarta Inject, alongside its own `@Factory`, `@Bean`, and `@Primary` annotations.
 
 > [!NOTE]
 > This repository is best read as both a usable mini-framework and an engineering portfolio project. It focuses on dependency resolution, generated metadata, qualifier handling, primary candidate selection, and clear runtime failures rather than breadth of features.
@@ -27,13 +27,13 @@ The project is also deliberately a little more memorable than another `@Inject` 
 ## Quick Example
 
 ```java
-@Jet
+@Singleton
 public class AlertService {
 
     private final NotificationSender sender;
 
-    @Intake
-    public AlertService(@Fuel("slack") NotificationSender sender) {
+    @Inject
+    public AlertService(@Named("slack") NotificationSender sender) {
         this.sender = sender;
     }
 
@@ -44,11 +44,11 @@ public class AlertService {
 ```
 
 ```java
-@Hangar
+@Factory
 public class NotificationHangar {
 
-    @Part
-    @Fuel("slack")
+    @Bean
+    @Named("slack")
     public NotificationSender slackSender() {
         return new SlackNotificationSender();
     }
@@ -76,10 +76,10 @@ It is intentionally small. The goal is not to replace Spring, Guice, or Dagger, 
 - Compile-time generation of `BeanDefinition` classes for annotated beans and factory methods.
 - Runtime container bootstrapped through `ControlTower.run(...)`.
 - Lazy singleton creation for generated beans.
-- Constructor injection for `@Jet` classes.
-- Factory-method injection through `@Hangar` and `@Part`.
-- Type plus qualifier resolution with `@Fuel` and `Qualifier`.
-- Primary candidate selection for `@Part` methods with `@Maverick`.
+- Constructor injection for `@Singleton` classes.
+- Factory-method injection through `@Factory` and `@Bean`.
+- Type plus qualifier resolution with `@Named` and `Qualifier`.
+- Primary candidate selection for `@Bean` methods with `@Primary`.
 - Circular dependency detection with a readable dependency path.
 - Small exception hierarchy for framework-specific failures.
 
@@ -91,8 +91,8 @@ JET is published on Maven Central.
 
 ```groovy
 dependencies {
-    implementation "io.github.mclavo:jet-core:0.5.0"
-    annotationProcessor "io.github.mclavo:jet-processor:0.5.0"
+    implementation "io.github.mclavo:jet-core:0.5.2"
+    annotationProcessor "io.github.mclavo:jet-processor:0.5.2"
 }
 ```
 
@@ -103,7 +103,7 @@ dependencies {
     <dependency>
         <groupId>io.github.mclavo</groupId>
         <artifactId>jet-core</artifactId>
-        <version>0.5.0</version>
+        <version>0.5.2</version>
     </dependency>
 </dependencies>
 
@@ -119,7 +119,7 @@ dependencies {
                     <path>
                         <groupId>io.github.mclavo</groupId>
                         <artifactId>jet-processor</artifactId>
-                        <version>0.5.0</version>
+                        <version>0.5.2</version>
                     </path>
                 </annotationProcessorPaths>
             </configuration>
@@ -188,7 +188,7 @@ dependencies {
 
 `example/build.gradle` also declares `implementation project(':processor')` while developing inside this repository, but application code uses the public runtime API from `core`.
 
-For a complete runnable walkthrough, use the Notification Center guide in [`example/README.md`](example/README.md). It explains `@Jet`, `@Intake`, `@Hangar`, `@Part`, `@Fuel`, `@Maverick`, and `JetContext.provide(...)` with concrete files you can modify and run.
+For a complete runnable walkthrough, use the Notification Center guide in [`example/README.md`](example/README.md). It explains `@Singleton`, `@Inject`, `@Factory`, `@Bean`, `@Named`, `@Primary`, and `JetContext.provide(...)` with concrete files you can modify and run.
 
 ## Core Concepts
 
@@ -196,12 +196,12 @@ For a complete runnable walkthrough, use the Notification Center guide in [`exam
 
 | Annotation | Implemented behavior |
 | --- | --- |
-| `@Jet` | Marks a class as a generated container-managed bean. |
-| `@Hangar` | Marks a class that owns `@Part` factory methods. A hangar with parts also gets a generated bean definition so its methods can be called by the container. |
-| `@Part` | Marks a factory method inside a `@Hangar`. The method return type becomes the registered bean type. |
-| `@Intake` | Selects the constructor to use when a `@Jet` or generated hangar bean has multiple constructors. |
-| `@Fuel` | Qualifies a `@Part` method or an injected constructor/factory parameter. Blank values map to no qualifier. |
-| `@Maverick` | Marks a `@Part` method as primary for candidate resolution. |
+| `@Singleton` | Marks a class as a generated container-managed bean, or a factory method as a bean producer. |
+| `@Factory` | Marks a class that owns `@Bean` factory methods. A factory with bean methods also gets a generated bean definition so its methods can be called by the container. |
+| `@Bean` | Marks a factory method inside a `@Factory`; `@Singleton` can also mark a factory method. The method return type becomes the registered bean type. |
+| `@Inject` | Selects the constructor to use when a `@Singleton` or generated factory bean has multiple constructors. |
+| `@Named` | Qualifies a `@Bean` method or an injected constructor/factory parameter. Blank values map to no qualifier. |
+| `@Primary` | Marks a `@Bean` method as primary for candidate resolution. |
 | `@JETMISSION` | Runtime-retained application metadata marker. It is not currently required by `ControlTower.run(...)`. |
 
 `@Altitude`, `@Afterburner`, and `@Ignition` are present as annotations but are not wired into generation or runtime behavior yet.
@@ -224,28 +224,28 @@ Resolution rules are intentionally small:
 - If multiple matching candidates remain and there is no unique primary, `MultipleBeanCandidateException` is thrown.
 - If no candidate exists, `BeanProvisionException` is thrown.
 
-Generated definitions register the exact type they represent. For `@Jet` classes, that is the concrete class. For `@Part` methods, that is the method return type.
+Generated definitions register the exact type they represent. For `@Singleton` classes, that is the concrete class. For `@Bean` methods, that is the method return type.
 
 ### Lifecycle And Scoping
 
 Beans resolved through `JetContext` are lazy singletons. On first resolution, `JetContext.resolve()` calls the generated `BeanDefinition.apply(...)` and stores the instance in its registry's `BeanEntry`. Later requests reuse that instance. Singleton initialization remains synchronized on the entry, and the context's thread-local resolution stack detects circular dependencies.
 
-Generated definitions only construct beans: each direct call to `BeanDefinition.apply(...)` invokes the constructor or `@Part` factory method again, resolving dependencies through the supplied `BeanProvider`. Definitions do not cache instances; singleton lifecycle management belongs to `JetContext`.
+Generated definitions only construct beans: each direct call to `BeanDefinition.apply(...)` invokes the constructor or `@Bean` factory method again, resolving dependencies through the supplied `BeanProvider`. Definitions do not cache instances; singleton lifecycle management belongs to `JetContext`.
 
 ### Injection Patterns
 
 JET intentionally focuses on constructor-based dependency injection.
 
 Implemented injection paths are:
-- Constructor parameters on `@Jet` classes.
-- Constructor parameters on generated `@Hangar` beans.
-- Parameters on `@Part` factory methods.
-- Qualified parameters with `@Fuel(...)`.
+- Constructor parameters on `@Singleton` classes.
+- Constructor parameters on generated `@Factory` beans.
+- Parameters on `@Bean` factory methods.
+- Qualified parameters with `@Named(...)`.
 
-Selected constructors and `@Part` factory methods must not be private; package-access members are supported. Non-static inner classes cannot be beans because they require an enclosing instance. Declare nested beans `static` or use top-level classes. The processor reports these restrictions as compilation errors before generating their definitions.
+Selected constructors and `@Bean` factory methods must not be private; package-access members are supported. Non-static inner classes cannot be beans because they require an enclosing instance. Declare nested beans `static` or use top-level classes. The processor reports these restrictions as compilation errors before generating their definitions.
 
 > [!NOTE]
-> Field injection is not supported by design. JET favors constructor injection with `@Intake` because it:
+> Field and method injection are not supported by design. JET favors constructor injection with `@Inject` because it:
 > - makes dependencies explicit at object creation time;
 > - improves immutability by allowing `final` fields;
 > - makes components easier to test without container magic;
@@ -256,7 +256,7 @@ Selected constructors and `@Part` factory methods must not be private; package-a
 
 ### Configuration Model
 
-JET uses source annotations and generated metadata as configuration. During compilation, `processor` generates one `BeanDefinition` implementation per discovered `@Jet` class and `@Part` method. It also writes:
+JET uses source annotations and generated metadata as configuration. During compilation, `processor` generates one `BeanDefinition` implementation per discovered `@Singleton` class and `@Bean` method. It also writes:
 
 ```text
 META-INF/services/io.github.mclavo.jet.context.BeanDefinition
@@ -268,7 +268,7 @@ At runtime, `JetContext` uses `ServiceLoader<BeanDefinition>` to discover and re
 
 JET reports failures at the phase where they are easiest to understand:
 
-- Compile-time processor errors for invalid generated definitions, such as a class with multiple constructors and no unique `@Intake` constructor.
+- Compile-time processor errors for invalid generated definitions, such as a class with multiple constructors and no unique `@Inject` constructor.
 - `BeanDefinitionLoadingException` when generated definitions cannot be loaded through `ServiceLoader`.
 - `BeanProvisionException` when a bean cannot be resolved.
 - `MultipleBeanCandidateException` when resolution finds ambiguous candidates.
@@ -302,7 +302,7 @@ This design keeps runtime discovery cheap and explicit. The trade-off is that JE
 
 JET favors readable generated code and predictable resolution over feature completeness. A list-backed registry is used instead of a more complex indexing model because the framework is not designed for very large bean graphs. Synchronization around bean creation keeps singleton initialization straightforward. Qualifiers are plain value objects rather than annotation types, which makes them easy to generate and compare.
 
-The naming is intentionally distinctive. It helps the project feel like its own framework, but the mapping to common DI ideas stays clear: `@Jet` is a managed component, `@Hangar` is a configuration/factory class, `@Part` is a provider method, `@Intake` is an injection point, `@Fuel` is a qualifier, and `@Maverick` is a primary bean.
+JET combines Jakarta Inject annotations with factory and primary-candidate annotations defined by JET.
 
 ## Roadmap
 JET DI is intentionally small, but several areas are good candidates for future versions:
@@ -311,7 +311,7 @@ JET DI is intentionally small, but several areas are good candidates for future 
 - Prototype-scoped beans through a public scope annotation.
 - Stronger annotation processor tests using compile-time testing fixtures.
 - Better assignable-type resolution for interfaces and supertypes, while keeping ambiguity rules explicit.
-- Primary candidate support for `@Jet` classes, not only `@Part` factory methods.
+- Primary candidate support for `@Singleton` classes, not only `@Bean` factory methods.
 
 Non-goals remain equally important: JET DI does not aim to become a Spring replacement, a full application framework, or a runtime classpath scanner.
 
@@ -321,6 +321,6 @@ Non-goals remain equally important: JET DI does not aim to become a Spring repla
 - `JetContext` supports singleton beans only.
 - There are no lifecycle callbacks, shutdown hooks, profiles, conditional beans, or external configuration binding.
 - Type resolution uses registered bean types; it does not automatically search assignable implementations for every interface or superclass.
-- `@Maverick` currently applies to `@Part` methods, not `@Jet` classes.
+- `@Primary` currently applies to `@Bean` methods, not `@Singleton` classes.
 - Duplicate type/qualifier registrations are not rejected at registration time in the current registry implementation; ambiguity is handled during resolution.
 - Constructor and factory parameters are always treated as dependencies. Literal configuration values such as strings or primitives are not injected unless a matching bean exists.

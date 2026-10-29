@@ -6,9 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a method in a {@link Hangar} class as a bean factory method.
+ * Marks a method in a {@link Factory} class as a bean factory method.
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Part {
+public @interface Bean {
 }

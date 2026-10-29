@@ -6,17 +6,17 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 
-import io.github.mclavo.jet.annotation.Maverick;
+import io.github.mclavo.jet.annotation.Primary;
 import io.github.mclavo.jet.exception.DefinitionFactoryException;
 import io.github.mclavo.jet.model.BeanSpec;
 import io.github.mclavo.jet.model.CreationSpec;
 import io.github.mclavo.jet.model.DependencySpec;
 
-public final class PartDefinitionAnalyzer {
+public final class FactoryDefinitionAnalyzer {
 
     private final DependencyAnalyzer dependencyAnalyzer;
 
-    public PartDefinitionAnalyzer() {
+    public FactoryDefinitionAnalyzer() {
         this.dependencyAnalyzer = new DependencyAnalyzer();
     }
 
@@ -33,7 +33,7 @@ public final class PartDefinitionAnalyzer {
     private CreationSpec.FactoryMethod analyzeMethod(ExecutableElement methodElement) {
         if (methodElement.getModifiers().contains(Modifier.PRIVATE)) {
             throw new DefinitionFactoryException(
-                methodElement + " factory method annotated with @Part must not be private"
+                methodElement + " factory method annotated with @Bean must not be private"
             );
         }
 
@@ -49,6 +49,6 @@ public final class PartDefinitionAnalyzer {
 
 
     private boolean isPrimary(ExecutableElement methodElement) {
-        return methodElement.getAnnotation(Maverick.class) != null;
+        return methodElement.getAnnotation(Primary.class) != null;
     }
 }

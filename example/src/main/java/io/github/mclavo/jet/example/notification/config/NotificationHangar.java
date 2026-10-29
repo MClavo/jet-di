@@ -1,9 +1,9 @@
 package io.github.mclavo.jet.example.notification.config;
 
-import io.github.mclavo.jet.annotation.Fuel;
-import io.github.mclavo.jet.annotation.Hangar;
-import io.github.mclavo.jet.annotation.Maverick;
-import io.github.mclavo.jet.annotation.Part;
+import jakarta.inject.Named;
+import io.github.mclavo.jet.annotation.Factory;
+import io.github.mclavo.jet.annotation.Primary;
+import io.github.mclavo.jet.annotation.Bean;
 import io.github.mclavo.jet.example.notification.formatter.JsonFormatter;
 import io.github.mclavo.jet.example.notification.formatter.MarkdownFormatter;
 import io.github.mclavo.jet.example.notification.formatter.MessageFormatter;
@@ -13,41 +13,41 @@ import io.github.mclavo.jet.example.notification.sender.EmailNotificationSender;
 import io.github.mclavo.jet.example.notification.sender.NotificationSender;
 import io.github.mclavo.jet.example.notification.sender.SlackNotificationSender;
 
-@Hangar
+@Factory
 public class NotificationHangar {
-    @Part
-    @Fuel("email")
+    @Bean
+    @Named("email")
     public NotificationSender emailSender() {
         return new EmailNotificationSender();
     }
 
-    @Part
-    @Fuel("slack")
-    @Maverick
+    @Bean
+    @Named("slack")
+    @Primary
     public NotificationSender slackSender() {
         return new SlackNotificationSender();
     }
 
-    @Part
-    @Fuel("console")
+    @Bean
+    @Named("console")
     public NotificationSender consoleSender() {
         return new ConsoleNotificationSender();
     }
 
-    @Part
-    @Maverick
+    @Bean
+    @Primary
     public MessageFormatter plainTextFormatter() {
         return new PlainTextFormatter();
     }
 
-    @Part
-    @Fuel("json")
+    @Bean
+    @Named("json")
     public MessageFormatter jsonFormatter() {
         return new JsonFormatter();
     }
 
-    @Part
-    @Fuel("markdown")
+    @Bean
+    @Named("markdown")
     public MessageFormatter markdownFormatter() {
         return new MarkdownFormatter();
     }

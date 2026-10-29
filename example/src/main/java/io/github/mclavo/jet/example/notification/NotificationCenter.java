@@ -1,12 +1,12 @@
 package io.github.mclavo.jet.example.notification;
 
-import io.github.mclavo.jet.annotation.Fuel;
-import io.github.mclavo.jet.annotation.Intake;
-import io.github.mclavo.jet.annotation.Jet;
+import jakarta.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import io.github.mclavo.jet.example.notification.formatter.MessageFormatter;
 import io.github.mclavo.jet.example.notification.sender.NotificationSender;
 
-@Jet
+@Singleton
 public final class NotificationCenter {
 
     private final AlertService alertService;
@@ -14,12 +14,12 @@ public final class NotificationCenter {
     private final MessageFormatter jsonFormatter;
     private final MessageFormatter markdownFormatter;
 
-    @Intake
+    @Inject
     public NotificationCenter(
             AlertService alertService,
             NotificationSender defaultSender,
-            @Fuel("json") MessageFormatter jsonFormatter,
-            @Fuel("markdown") MessageFormatter markdownFormatter
+            @Named("json") MessageFormatter jsonFormatter,
+            @Named("markdown") MessageFormatter markdownFormatter
     ) {
         this.alertService = alertService;
         this.defaultSender = defaultSender;
@@ -34,15 +34,15 @@ public final class NotificationCenter {
         alertService.sendDeploymentAlert();
 
         System.out.println();
-        System.out.println("--- Default sender lookup through @Maverick ---");
-        defaultSender.send("This sender was injected into NotificationCenter through @Maverick");
+        System.out.println("--- Default sender lookup through @Primary ---");
+        defaultSender.send("This sender was injected into NotificationCenter through @Primary");
 
         System.out.println();
         System.out.println("--- Qualified JSON formatter injection ---");
-        System.out.println(jsonFormatter.format("Container ready", "Message formatter injected with @Fuel(\"json\")"));
+        System.out.println(jsonFormatter.format("Container ready", "Message formatter injected with @Named(\"json\")"));
 
         System.out.println();
         System.out.println("--- Qualified Markdown formatter injection ---");
-        System.out.println(markdownFormatter.format("Container ready", "Message formatter injected with @Fuel(\"markdown\")"));
+        System.out.println(markdownFormatter.format("Container ready", "Message formatter injected with @Named(\"markdown\")"));
     }
 }

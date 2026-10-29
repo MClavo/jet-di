@@ -17,6 +17,6 @@ public class App {
 
         System.out.println("\n--- Direct qualified lookup ---");
         NotificationSender emailSender = context.provide(NotificationSender.class, "email");
-        emailSender.send("This sender was resolved directly with @Fuel(\"email\")");
+        emailSender.send("This sender was resolved directly with @Named(\"email\")");
     }
 }

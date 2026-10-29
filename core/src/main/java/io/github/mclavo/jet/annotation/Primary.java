@@ -6,11 +6,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Indicates that the bean provided by a {@link Part} method should be
+ * Indicates that the bean provided by a {@link Bean} method should be
  * considered the primary candidate for injection when multiple beans of the
  * same type are available.
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Maverick {
+public @interface Primary {
 }

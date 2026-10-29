@@ -42,6 +42,7 @@ class JetProcessorIntegrationTest {
             package org.acme.app;
 
             import io.github.mclavo.jet.annotation.*;
+            import jakarta.inject.*;
 
             public class Application {
                 public interface Sender {
@@ -61,12 +62,12 @@ class JetProcessorIntegrationTest {
                     }
                 }
 
-                @Jet
+                @Singleton
                 public static class AuditService {
                     private final Sender sender;
                     private final Formatter formatter;
 
-                    public AuditService(@Fuel("email") Sender sender, Formatter formatter) {
+                    public AuditService(@Named("email") Sender sender, Formatter formatter) {
                         this.sender = sender;
                         this.formatter = formatter;
                     }
@@ -76,13 +77,13 @@ class JetProcessorIntegrationTest {
                     }
                 }
 
-                @Jet
+                @Singleton
                 public static class NotificationCenter {
                     private final AuditService audit;
                     private final Sender sender;
                     private final Formatter formatter;
 
-                    public NotificationCenter(AuditService audit, Sender sender, @Fuel("json") Formatter formatter) {
+                    public NotificationCenter(AuditService audit, Sender sender, @Named("json") Formatter formatter) {
                         this.audit = audit;
                         this.sender = sender;
                         this.formatter = formatter;
@@ -94,24 +95,24 @@ class JetProcessorIntegrationTest {
                     }
                 }
 
-                @Hangar
+                @Factory
                 public static class NotificationHangar {
-                    @Part @Fuel("email")
+                    @Singleton @Named("email")
                     public Sender emailSender() {
                         return new SenderValue("email");
                     }
 
-                    @Part @Fuel("slack") @Maverick
+                    @Bean @Singleton @Named("slack") @Primary
                     public Sender slackSender() {
                         return new SenderValue("slack");
                     }
 
-                    @Part @Maverick
+                    @Bean @Primary
                     public Formatter plainFormatter() {
                         return new FormatterValue("plain");
                     }
 
-                    @Part @Fuel("json")
+                    @Bean @Named("json")
                     public Formatter jsonFormatter() {
                         return new FormatterValue("json");
                     }
@@ -147,7 +148,7 @@ class JetProcessorIntegrationTest {
             assertEquals("email", invokeString(context.provide(senderType, "email"), "name"));
             assertEquals("slack", invokeString(context.provide(senderType), "name"));
 
-            // Constructor and instance @Part definitions create on every call;
+            // Constructor and instance @Bean definitions create on every call;
             // only context resolution caches the resulting singleton.
             for (BeanDefinition<?> definition : ServiceLoader.load(BeanDefinition.class, classLoader)) {
                 Object first = definition.apply(context);
@@ -169,15 +170,16 @@ class JetProcessorIntegrationTest {
             package org.acme.escape;
 
             import io.github.mclavo.jet.annotation.*;
+            import jakarta.inject.*;
 
-            @Hangar
+            @Factory
             public class EscapedHangar {
-                @Part @Fuel("blue-team/v1")
+                @Bean @Named("blue-team/v1")
                 public String blue() {
                     return "blue";
                 }
 
-                @Part @Fuel("quote \\\"and\\\\slash")
+                @Bean @Named("quote \\\"and\\\\slash")
                 public String weird() {
                     return "weird";
                 }
@@ -210,16 +212,17 @@ class JetProcessorIntegrationTest {
             package org.acme.blank;
 
             import io.github.mclavo.jet.annotation.*;
+            import jakarta.inject.*;
 
-            @Hangar
+            @Factory
             public class BlankHangar {
-                @Part @Fuel("   ")
+                @Bean @Named("   ")
                 public String text() {
                     return "ready";
                 }
 
-                @Part
-                public StringBuilder builder(@Fuel("   ") String text) {
+                @Bean
+                public StringBuilder builder(@Named("   ") String text) {
                     return new StringBuilder(text);
                 }
             }
@@ -251,14 +254,15 @@ class JetProcessorIntegrationTest {
             package org.acme.factory;
 
             import io.github.mclavo.jet.annotation.*;
+            import jakarta.inject.*;
 
-            @Hangar
+            @Factory
             public class StaticHangar {
                 public StaticHangar() {
                     throw new AssertionError("Static factories do not need a hangar instance");
                 }
 
-                @Part
+                @Bean
                 public static StringBuilder message() {
                     return new StringBuilder("ready");
                 }
@@ -277,7 +281,7 @@ class JetProcessorIntegrationTest {
                 .findFirst()
                 .orElseThrow();
 
-            // Static @Part definitions also leave singleton caching to the context.
+            // Static @Bean definitions also leave singleton caching to the context.
             Object first = definition.apply(context);
             Object second = definition.apply(context);
 
@@ -299,16 +303,17 @@ class JetProcessorIntegrationTest {
             package org.acme.factory;
 
             import io.github.mclavo.jet.annotation.*;
+            import jakarta.inject.*;
 
-            @Hangar
+            @Factory
             public class OverloadedHangar {
-                @Part @Fuel("prefix")
+                @Bean @Named("prefix")
                 public String message() {
                     return "hello";
                 }
 
-                @Part @Fuel("greeting")
-                public String message(@Fuel("prefix") String prefix) {
+                @Bean @Named("greeting")
+                public String message(@Named("prefix") String prefix) {
                     return prefix + " world";
                 }
             }
@@ -339,17 +344,17 @@ class JetProcessorIntegrationTest {
         Compilation compilation = compile(tempDir, "org.acme.nested.Components", """
             package org.acme.nested;
 
-            import io.github.mclavo.jet.annotation.Jet;
+            import jakarta.inject.Singleton;
 
             public class Components {
                 public static class First {
-                    @Jet
+                    @Singleton
                     public static class Engine {
                     }
                 }
 
                 public static class Second {
-                    @Jet
+                    @Singleton
                     public static class Engine {
                     }
                 }
@@ -383,15 +388,16 @@ class JetProcessorIntegrationTest {
             package org.acme.record;
 
             import io.github.mclavo.jet.annotation.*;
+            import jakarta.inject.*;
 
             public class Components {
-                @Jet
+                @Singleton
                 public record Message(String text) {
                 }
 
-                @Hangar
+                @Factory
                 public static class Config {
-                    @Part
+                    @Bean
                     public String text() {
                         return "ready";
                     }
@@ -417,9 +423,9 @@ class JetProcessorIntegrationTest {
         Compilation compilation = compile(tempDir, "org.acme.constructor.PackageConstructor", """
             package org.acme.constructor;
 
-            import io.github.mclavo.jet.annotation.Jet;
+            import jakarta.inject.Singleton;
 
-            @Jet
+            @Singleton
             public class PackageConstructor {
                 PackageConstructor() {
                 }
@@ -445,14 +451,15 @@ class JetProcessorIntegrationTest {
             package org.acme.constructor;
 
             import io.github.mclavo.jet.annotation.*;
+            import jakarta.inject.*;
 
-            @Jet
+            @Singleton
             public class SelectedConstructor {
                 private SelectedConstructor(String unused) {
                     throw new AssertionError("The unselected constructor must not be called");
                 }
 
-                @Intake
+                @Inject
                 public SelectedConstructor() {
                 }
             }
@@ -476,9 +483,9 @@ class JetProcessorIntegrationTest {
         Compilation compilation = compile(tempDir, "org.acme.invalid.NoSelectedConstructor", """
             package org.acme.invalid;
 
-            import io.github.mclavo.jet.annotation.Jet;
+            import jakarta.inject.Singleton;
 
-            @Jet
+            @Singleton
             public class NoSelectedConstructor {
                 public NoSelectedConstructor() {
                 }
@@ -494,7 +501,7 @@ class JetProcessorIntegrationTest {
         // then
         assertFalse(compilation.success(), diagnostics);
         assertTrue(
-            diagnostics.contains("has more than one constructor, annotate one with @Intake to inject dependencies"),
+            diagnostics.contains("has more than one constructor, annotate one with @Inject to inject dependencies"),
             diagnostics
         );
     }
@@ -506,14 +513,15 @@ class JetProcessorIntegrationTest {
             package org.acme.invalid;
 
             import io.github.mclavo.jet.annotation.*;
+            import jakarta.inject.*;
 
-            @Jet
+            @Singleton
             public class TooManySelectedConstructors {
-                @Intake
+                @Inject
                 public TooManySelectedConstructors() {
                 }
 
-                @Intake
+                @Inject
                 public TooManySelectedConstructors(String name) {
                 }
             }
@@ -524,7 +532,7 @@ class JetProcessorIntegrationTest {
 
         // then
         assertFalse(compilation.success(), diagnostics);
-        assertTrue(diagnostics.contains("has more than one constructor annotated with @Intake"), diagnostics);
+        assertTrue(diagnostics.contains("has more than one constructor annotated with @Inject"), diagnostics);
     }
 
     @Test
@@ -533,9 +541,9 @@ class JetProcessorIntegrationTest {
         Compilation compilation = compile(tempDir, "org.acme.invalid.PrivateConstructor", """
             package org.acme.invalid;
 
-            import io.github.mclavo.jet.annotation.Jet;
+            import jakarta.inject.Singleton;
 
-            @Jet
+            @Singleton
             public class PrivateConstructor {
                 private PrivateConstructor() {
                 }
@@ -557,13 +565,14 @@ class JetProcessorIntegrationTest {
             package org.acme.invalid;
 
             import io.github.mclavo.jet.annotation.*;
+            import jakarta.inject.*;
 
-            @Jet
+            @Singleton
             public class PrivateIntakeConstructor {
                 public PrivateIntakeConstructor(String unused) {
                 }
 
-                @Intake
+                @Inject
                 private PrivateIntakeConstructor() {
                 }
             }
@@ -587,10 +596,11 @@ class JetProcessorIntegrationTest {
             package org.acme.invalid;
 
             import io.github.mclavo.jet.annotation.*;
+            import jakarta.inject.*;
 
-            @Hangar
+            @Factory
             public class PrivateFactoryHangar {
-                @Part
+                @Bean
                 private String message() {
                     return "unreachable";
                 }
@@ -602,7 +612,7 @@ class JetProcessorIntegrationTest {
 
         // then
         assertFalse(compilation.success(), "A private factory method must be rejected before runtime. " + diagnostics);
-        assertTrue(diagnostics.contains("message() factory method annotated with @Part must not be private"), diagnostics);
+        assertTrue(diagnostics.contains("message() factory method annotated with @Bean must not be private"), diagnostics);
     }
 
     @Test
@@ -611,10 +621,10 @@ class JetProcessorIntegrationTest {
         Compilation compilation = compile(tempDir, "org.acme.invalid.Outer", """
             package org.acme.invalid;
 
-            import io.github.mclavo.jet.annotation.Jet;
+            import jakarta.inject.Singleton;
 
             public class Outer {
-                @Jet
+                @Singleton
                 public class InnerBean {
                     public InnerBean() {
                     }
@@ -642,10 +652,10 @@ class JetProcessorIntegrationTest {
         Compilation compilation = compile(tempDir, "org.acme.invalid.Outer", """
             package org.acme.invalid;
 
-            import io.github.mclavo.jet.annotation.Jet;
+            import jakarta.inject.Singleton;
 
             public class Outer {
-                @Jet
+                @Singleton
                 public class InnerBean {
                     public InnerBean() {
                     }
@@ -662,7 +672,7 @@ class JetProcessorIntegrationTest {
         // then
         assertFalse(compilation.success(), diagnostics);
         assertTrue(diagnostics.contains("non-static inner classes require an enclosing instance"), diagnostics);
-        assertFalse(diagnostics.contains("annotate one with @Intake"), diagnostics);
+        assertFalse(diagnostics.contains("annotate one with @Inject"), diagnostics);
         assertFalse(Files.exists(compilation.classes().resolve("org/acme/invalid/Outer$InnerBean$JetDefinition.class")));
     }
 

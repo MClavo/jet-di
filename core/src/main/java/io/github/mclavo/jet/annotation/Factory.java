@@ -6,9 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a class that declares {@link Part} factory methods.
+ * Marks a class that declares {@link Bean} factory methods.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Hangar {
+public @interface Factory {
 }

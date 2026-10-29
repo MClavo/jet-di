@@ -6,8 +6,8 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 
-import io.github.mclavo.jet.annotation.Fuel;
 import io.github.mclavo.jet.model.DependencySpec;
+import jakarta.inject.Named;
 
 final class DependencyAnalyzer {
 
@@ -22,10 +22,10 @@ final class DependencyAnalyzer {
     }
 
     public String getQualifier(Element element) {
-        Fuel fuel = element.getAnnotation(Fuel.class);
+        Named named = element.getAnnotation(Named.class);
 
-        return fuel == null || fuel.value().isBlank()
+        return named == null || named.value().isBlank()
             ? ""
-            : fuel.value();
+            : named.value();
     }
 }
